@@ -54,6 +54,7 @@
 
   var logoHtml =
     '<div class="hero-logo" id="hero-logo">' +
+    (E.logo ? '<img class="hero-selo" src="' + esc(E.logo) + '" alt="Selo da IEEE Industrial Electronics Society">' : "") +
     '<span class="logo-texto">IEEE<br>Industrial<br>Electronics Society</span>' +
     "</div>";
 
@@ -85,17 +86,6 @@
     '<div class="contagem" id="contagem" style="--i:2" aria-live="polite"></div>' +
     "</div>";
 
-  // Logo opcional: só aparece se o arquivo existir
-  if (E.logo) {
-    var logo = new Image();
-    logo.onload = function () {
-      var box = $("#hero-logo");
-      box.innerHTML = "";
-      logo.alt = "IEEE Industrial Electronics Society";
-      box.appendChild(logo);
-    };
-    logo.src = E.logo;
-  }
 
   /* ---------- contagem regressiva ---------- */
   (function () {
@@ -287,8 +277,13 @@
       if (img.parentNode) img.parentNode.textContent = img.getAttribute("data-iniciais") || "";
     });
   });
-  if (temApoio) $("#apoio").innerHTML = E.apoio.map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("");
-  else $("#apoio-bloco").hidden = true;
+  if (temApoio) {
+    $("#apoio").innerHTML = E.apoio.map(function (a) {
+      if (typeof a === "string") return "<li>" + esc(a) + "</li>";
+      if (a.logo) return '<li class="apoio-logo"><img src="' + esc(a.logo) + '" alt="' + esc(a.nome) + '" title="' + esc(a.nome) + '" loading="lazy"></li>';
+      return "<li>" + esc(a.nome) + "</li>";
+    }).join("");
+  } else $("#apoio-bloco").hidden = true;
   if (!temEquipe && !temApoio && !temOrientacao) esconde("organizacao");
 
   /* ---------- chamada final ---------- */

@@ -11,7 +11,8 @@ styles.css      visual e animações de entrada
 app.js          montagem das seções, contagem regressiva, céu e globo animados
 dados.js        TODO o conteúdo do evento (edite só este arquivo)
 terra.js        máscara dos continentes usada pelo globo
-favicon.svg     ícone da aba
+logo-ies.png    selo da IES (ícone da aba, topo e apoio)
+logo-ramo-ieee-ifrn.png  logo do Ramo Estudantil IEEE IFRN (apoio)
 vercel.json     cabeçalhos e cache para a Vercel
 assets/
   estrelas.jpg  céu estrelado extraído da foto original
