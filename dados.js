@@ -119,11 +119,12 @@ window.EVENTO = {
     },
   ],
 
-  // Cada item pode ser só o nome ou { nome, logo }. Com logo, aparece a imagem num cartão branco.
+  // Cada item pode ser só o nome ou { nome, logo, legenda }. Com logo, aparece a imagem num cartão branco; a legenda (opcional) fica ao lado.
   apoio: [
     { nome: "IEEE Industrial Electronics Society", logo: "logo-ies.png" },
     { nome: "Ramo Estudantil IEEE IFRN", logo: "logo-ramo-ieee-ifrn.png" },
-    "IFRN Campus Natal-Central",
+    { nome: "Instituto Federal do Rio Grande do Norte", logo: "logo-ifrn.png" },
+    { nome: "Diretoria Acadêmica de Indústria do Campus Natal-Central", logo: "logo-diacin.png", legenda: "Diretoria Acadêmica de Indústria · Campus Natal‑Central" },
   ],
 
   // Bloco que aparece abaixo de "Apoio". Troque o título se quiser (ex.: "Professor orientador").

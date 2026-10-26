@@ -896,6 +896,14 @@ body::before {
   align-items: center;
 }
 .apoio-lista li.apoio-logo img { height: 100%; width: auto; }
+.apoio-legenda {
+  margin-left: 12px;
+  max-width: 190px;
+  color: #1b2459;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.3;
+}
 
 /* Chamada final */
 .chamada {

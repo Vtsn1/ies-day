@@ -280,7 +280,8 @@
   if (temApoio) {
     $("#apoio").innerHTML = E.apoio.map(function (a) {
       if (typeof a === "string") return "<li>" + esc(a) + "</li>";
-      if (a.logo) return '<li class="apoio-logo"><img src="' + esc(a.logo) + '" alt="' + esc(a.nome) + '" title="' + esc(a.nome) + '" loading="lazy"></li>';
+      if (a.logo) return '<li class="apoio-logo"><img src="' + esc(a.logo) + '" alt="' + esc(a.nome) + '" title="' + esc(a.nome) + '" loading="lazy">' +
+        (a.legenda ? '<span class="apoio-legenda">' + esc(a.legenda) + "</span>" : "") + "</li>";
       return "<li>" + esc(a.nome) + "</li>";
     }).join("");
   } else $("#apoio-bloco").hidden = true;

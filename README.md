@@ -13,6 +13,8 @@ dados.js        TODO o conteúdo do evento (edite só este arquivo)
 terra.js        máscara dos continentes usada pelo globo
 logo-ies.png    selo da IES (ícone da aba, topo e apoio)
 logo-ramo-ieee-ifrn.png  logo do Ramo Estudantil IEEE IFRN (apoio)
+logo-ifrn.png   logo do IFRN (apoio)
+logo-diacin.png logo da Diretoria Acadêmica de Indústria (apoio)
 vercel.json     cabeçalhos e cache para a Vercel
 assets/
   estrelas.jpg  céu estrelado extraído da foto original
