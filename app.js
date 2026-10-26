@@ -200,7 +200,9 @@
   /* ---------- palestrantes ---------- */
   if (lista(E.palestrantes).length) {
     $("#palestrantes-lista").innerHTML = E.palestrantes.map(function (p, i) {
-      var foto = p.foto ? '<img src="' + esc(p.foto) + '" alt="Foto de ' + esc(p.nome) + '" loading="lazy">' : esc(iniciais(p.nome));
+      var foto = p.foto
+        ? '<img src="' + esc(p.foto) + '" alt="Foto de ' + esc(p.nome) + '" data-iniciais="' + esc(iniciais(p.nome)) + '">'
+        : esc(iniciais(p.nome));
       return (
         '<li class="palestrante revela' + (p.foto ? " com-foto" : "") + (lista(p.bio).length ? " com-bio" : "") + '" style="--i:' + i + '">' +
         '<div class="avatar">' + foto + "</div>" +
@@ -215,6 +217,17 @@
         "</li>"
       );
     }).join("");
+    // se a foto não carregar, mostra as iniciais no lugar
+    Array.prototype.forEach.call(document.querySelectorAll(".avatar img"), function (img) {
+      function falhou() {
+        var av = img.parentNode;
+        if (!av) return;
+        av.textContent = img.getAttribute("data-iniciais") || "";
+        av.closest(".palestrante").classList.remove("com-foto");
+      }
+      if (img.complete && !img.naturalWidth) falhou();
+      else img.addEventListener("error", falhou);
+    });
     // brilho que acompanha o cursor
     $("#palestrantes-lista").addEventListener("pointermove", function (e) {
       var c = e.target.closest(".palestrante");
