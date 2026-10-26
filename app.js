@@ -211,7 +211,7 @@
         (p.tema ? '<p class="palestra-tema">' + esc(p.tema) + "</p>" : "") +
         (lista(p.areas).length ? '<ul class="areas">' + p.areas.map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("") + "</ul>" : "") +
         (lista(p.bio).length
-          ? '<details class="bio"><summary>Mini currículo<span class="faq-mais" aria-hidden="true">' + ICONES.mais + "</span></summary>" +
+          ? '<details class="bio"><summary>Mini bio<span class="faq-mais" aria-hidden="true">' + ICONES.mais + "</span></summary>" +
             '<div class="bio-texto">' + p.bio.map(function (b) { return "<p>" + esc(b) + "</p>"; }).join("") + "</div></details>"
           : "") +
         "</li>"

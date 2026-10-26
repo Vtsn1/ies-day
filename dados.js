@@ -67,7 +67,7 @@ window.EVENTO = {
   ],
 
   // foto: caminho opcional, ex. "assets/palestrantes/maria.jpg". Sem foto, ou se o arquivo não carregar, aparecem as iniciais.
-  // areas (opcional): etiquetas curtas. bio (opcional): parágrafos do mini currículo, abre no botão do cartão.
+  // areas (opcional): etiquetas curtas. bio (opcional): parágrafos da mini bio, abre no botão do cartão.
   palestrantes: [
     {
       nome: "Cassius Clay Batista da Silva Filho",
