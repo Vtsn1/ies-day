@@ -225,8 +225,8 @@
         av.textContent = img.getAttribute("data-iniciais") || "";
         av.closest(".palestrante").classList.remove("com-foto");
       }
-      if (img.complete && !img.naturalWidth) falhou();
-      else img.addEventListener("error", falhou);
+      // só o evento de erro decide; checar img.complete logo após inserir dá falso negativo em alguns navegadores
+      img.addEventListener("error", falhou);
     });
     // brilho que acompanha o cursor
     $("#palestrantes-lista").addEventListener("pointermove", function (e) {
