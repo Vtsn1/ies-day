@@ -846,6 +846,7 @@ body::before {
   break-inside: avoid;
   margin-bottom: 12px;
 }
+.equipe.orientacao { columns: 2 320px; max-width: 760px; }
 .membro {
   display: flex;
   flex-direction: column;

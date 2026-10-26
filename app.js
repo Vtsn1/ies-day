@@ -263,20 +263,25 @@
   /* ---------- organização ---------- */
   var temEquipe = lista(E.organizacao).length;
   var temApoio = lista(E.apoio).length;
-  if (temEquipe) {
-    $("#equipe").innerHTML = E.organizacao.map(function (m, i) {
-      var foto = m.foto
-        ? '<img src="' + esc(m.foto) + '" alt="Foto de ' + esc(m.nome) + '" data-iniciais="' + esc(iniciais(m.nome)) + '">'
-        : esc(iniciais(m.nome));
-      return (
-        '<li class="membro revela' + (m.descricao ? " com-descricao" : "") + '" style="--i:' + i + '">' +
-        '<div class="membro-topo"><div class="avatar">' + foto + "</div>" +
-        '<div><strong>' + esc(m.nome) + "</strong><span>" + esc(m.papel) + "</span></div></div>" +
-        (m.descricao ? '<p class="membro-descricao">' + esc(m.descricao) + "</p>" : "") +
-        "</li>"
-      );
-    }).join("");
+  var orient = E.orientacao || {};
+  var temOrientacao = lista(orient.pessoas).length;
+  function cartaoMembro(m, i) {
+    var foto = m.foto
+      ? '<img src="' + esc(m.foto) + '" alt="Foto de ' + esc(m.nome) + '" data-iniciais="' + esc(iniciais(m.nome)) + '">'
+      : esc(iniciais(m.nome));
+    return (
+      '<li class="membro revela' + (m.descricao ? " com-descricao" : "") + '" style="--i:' + i + '">' +
+      '<div class="membro-topo"><div class="avatar">' + foto + "</div>" +
+      "<div><strong>" + esc(m.nome) + "</strong><span>" + esc(m.papel) + "</span></div></div>" +
+      (m.descricao ? '<p class="membro-descricao">' + esc(m.descricao) + "</p>" : "") +
+      "</li>"
+    );
   }
+  if (temEquipe) $("#equipe").innerHTML = E.organizacao.map(cartaoMembro).join("");
+  if (temOrientacao) {
+    $("#orientacao-titulo").textContent = orient.titulo || "Orientação";
+    $("#orientacao").innerHTML = orient.pessoas.map(cartaoMembro).join("");
+  } else $("#orientacao-bloco").hidden = true;
   Array.prototype.forEach.call(document.querySelectorAll(".membro .avatar img"), function (img) {
     img.addEventListener("error", function () {
       if (img.parentNode) img.parentNode.textContent = img.getAttribute("data-iniciais") || "";
@@ -284,7 +289,7 @@
   });
   if (temApoio) $("#apoio").innerHTML = E.apoio.map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("");
   else $("#apoio-bloco").hidden = true;
-  if (!temEquipe && !temApoio) esconde("organizacao");
+  if (!temEquipe && !temApoio && !temOrientacao) esconde("organizacao");
 
   /* ---------- chamada final ---------- */
   $("#chamada-conteudo").innerHTML =
