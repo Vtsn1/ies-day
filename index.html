@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>IES DAY · Energia sem Fronteiras</title>
+  <meta name="description" content="IES DAY: Energia sem Fronteiras. Evento do Capítulo Estudantil IEEE IES do IFRN.">
+  <meta name="theme-color" content="#030824">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="IES DAY · Energia sem Fronteiras">
+  <meta property="og:description" content="Palestras, minicursos e mesa redonda sobre eletrônica industrial, automação e energia.">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600&family=Montserrat:wght@600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <canvas id="ceu" aria-hidden="true"></canvas>
+
+  <header class="topo" id="topo">
+    <div class="container topo-linha">
+      <a class="marca" href="#inicio" aria-label="Início">
+        <span class="marca-icone" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 2l2.2 6.6L21 11l-6.8 2.4L12 20l-2.2-6.6L3 11l6.8-2.4z"/></svg>
+        </span>
+        <span><b>IES</b> DAY</span>
+      </a>
+      <button class="menu-botao" id="menu-botao" aria-expanded="false" aria-controls="menu" aria-label="Abrir menu">
+        <span></span><span></span>
+      </button>
+      <nav class="menu" id="menu" aria-label="Seções">
+        <a href="#sobre" data-secao="sobre">Sobre</a>
+        <a href="#programacao" data-secao="programacao">Programação</a>
+        <a href="#palestrantes" data-secao="palestrantes">Palestrantes</a>
+        <a href="#local" data-secao="local">Local</a>
+        <a href="#faq" data-secao="faq">Dúvidas</a>
+        <span id="menu-inscricao"></span>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio">
+      <canvas id="globo" aria-hidden="true"></canvas>
+      <div class="container hero-conteudo" id="hero"></div>
+    </section>
+
+    <section class="secao" id="sobre">
+      <div class="container sobre-grade">
+        <div class="revela">
+          <p class="secao-rotulo">Sobre o evento</p>
+          <h2 class="secao-titulo" id="sobre-titulo"></h2>
+          <div class="sobre-texto" id="sobre-texto"></div>
+        </div>
+        <ul class="numeros" id="numeros"></ul>
+      </div>
+    </section>
+
+    <section class="secao" id="programacao">
+      <div class="container">
+        <div class="revela">
+          <p class="secao-rotulo">Programação</p>
+          <h2 class="secao-titulo">Agenda do dia</h2>
+        </div>
+        <div class="cartao prog revela">
+          <div class="abas" id="prog-abas" role="tablist" aria-label="Dias do evento"></div>
+          <ol class="prog-lista" id="prog-lista"></ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao" id="palestrantes">
+      <div class="container">
+        <div class="revela">
+          <p class="secao-rotulo">Palestrantes</p>
+          <h2 class="secao-titulo">Quem vai falar</h2>
+        </div>
+        <ul class="palestrantes" id="palestrantes-lista"></ul>
+      </div>
+    </section>
+
+    <section class="secao" id="local">
+      <div class="container local-grade">
+        <div class="revela">
+          <p class="secao-rotulo">Local</p>
+          <h2 class="secao-titulo" id="local-nome"></h2>
+          <p class="local-endereco" id="local-endereco"></p>
+          <p class="local-texto" id="local-texto"></p>
+          <a class="botao secundario" id="local-link" target="_blank" rel="noopener">Abrir no Google Maps</a>
+        </div>
+        <div class="mapa cartao revela" id="local-mapa"></div>
+      </div>
+    </section>
+
+    <section class="secao" id="faq">
+      <div class="container faq-grade">
+        <div class="revela">
+          <p class="secao-rotulo">Dúvidas</p>
+          <h2 class="secao-titulo">Perguntas frequentes</h2>
+        </div>
+        <div class="faq-lista" id="faq-lista"></div>
+      </div>
+    </section>
+
+    <section class="secao" id="organizacao">
+      <div class="container">
+        <div class="revela">
+          <p class="secao-rotulo">Organização</p>
+          <h2 class="secao-titulo">Quem faz acontecer</h2>
+        </div>
+        <ul class="equipe" id="equipe"></ul>
+        <div class="apoio revela" id="apoio-bloco">
+          <p class="apoio-rotulo">Apoio</p>
+          <ul class="apoio-lista" id="apoio"></ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="secao" id="chamada">
+      <div class="container">
+        <div class="cartao chamada revela" id="chamada-conteudo"></div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="rodape">
+    <div class="container rodape-linha" id="rodape"></div>
+  </footer>
+
+  <script src="dados.js"></script>
+  <script src="terra.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
