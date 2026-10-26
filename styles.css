@@ -837,11 +837,14 @@ body::before {
 }
 
 /* Organização */
+/* colunas em cascata: cartões curtos e longos se encaixam sem buracos */
 .equipe {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  gap: 12px;
-  align-items: start;
+  columns: 4 250px;
+  column-gap: 12px;
+}
+.equipe .membro {
+  break-inside: avoid;
+  margin-bottom: 12px;
 }
 .membro {
   display: flex;
