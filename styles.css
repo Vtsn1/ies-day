@@ -839,21 +839,24 @@ body::before {
 /* Organização */
 .equipe {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   gap: 12px;
+  align-items: start;
 }
 .membro {
   display: flex;
-  align-items: center;
+  flex-direction: column;
   gap: 14px;
-  padding: 16px;
+  padding: 18px;
   border-radius: var(--raio-pequeno);
   background: var(--cartao);
   border: 1px solid var(--borda);
   transition: transform var(--dur-rapida) var(--ease-mola), border-color var(--dur-rapida) ease;
 }
 .membro:hover { transform: translateY(-3px); border-color: var(--borda-forte); }
-.membro .avatar { width: 48px; height: 48px; font-size: 16px; margin: 0; flex: none; box-shadow: none; }
+.membro-topo { display: flex; align-items: center; gap: 14px; }
+.membro .avatar { width: 64px; height: 64px; font-size: 18px; margin: 0; flex: none; box-shadow: 0 0 0 2px rgba(103, 212, 255, 0.22); }
+.membro-descricao { color: var(--texto-2); font-size: 14px; line-height: 1.6; }
 .membro strong { display: block; font-size: 15px; }
 .membro span { display: block; color: var(--texto-2); font-size: 13.5px; }
 .apoio { margin-top: 44px; }
