@@ -693,6 +693,7 @@ body::before {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
+  align-items: start;
 }
 .palestrante {
   padding: 26px 22px;
@@ -734,6 +735,37 @@ body::before {
 .palestrante h3 { font-family: var(--fonte-titulo); font-weight: 700; font-size: 18px; }
 .cargo { color: var(--ciano); font-size: 14px; margin-top: 2px; }
 .palestra-tema { margin-top: 12px; color: var(--texto-2); font-size: 15px; }
+.palestrante.com-foto .avatar { width: 112px; height: 112px; }
+.palestrante.com-bio { grid-column: span 2; }
+@media (max-width: 620px) { .palestrante.com-bio { grid-column: auto; } }
+.areas { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.areas li {
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--azul-claro);
+  background: rgba(58, 70, 255, 0.14);
+  border: 1px solid var(--borda);
+}
+.bio { margin-top: 16px; border-top: 1px solid var(--borda); position: relative; z-index: 1; }
+.bio summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-top: 14px;
+  font-weight: 600;
+  font-size: 14.5px;
+  color: var(--texto);
+}
+.bio summary::-webkit-details-marker { display: none; }
+.bio[open] .faq-mais { transform: rotate(45deg); background: var(--azul); }
+.bio-texto { padding-top: 10px; color: var(--texto-2); font-size: 14.5px; line-height: 1.6; }
+.bio-texto p + p { margin-top: 10px; }
+.bio[open] .bio-texto { animation: entrar-baixo var(--dur-rapida) var(--ease-saida); }
 
 /* Local */
 .local-grade {

@@ -67,8 +67,19 @@ window.EVENTO = {
   ],
 
   // foto: caminho opcional, ex. "assets/palestrantes/maria.jpg". Sem foto, aparecem as iniciais.
+  // areas (opcional): etiquetas curtas. bio (opcional): parágrafos do mini currículo, abre no botão do cartão.
   palestrantes: [
-    { nome: "Nome do Palestrante", cargo: "Cargo · Empresa", tema: "Eletrônica de potência na transição energética", foto: "" },
+    {
+      nome: "Cassius Clay Batista da Silva Filho",
+      cargo: "DevOps Specialist · Zxperience",
+      tema: "",
+      foto: "assets/palestrantes/cassius.jpg",
+      areas: ["IoT", "Redes RPL", "Criptografia pós-quântica", "Kubernetes", "Cloud native"],
+      bio: [
+        "Mestre em Tecnologia da Informação pela Universidade Federal do Rio Grande do Norte (UFRN), com atuação em pesquisas nas áreas de Internet das Coisas (IoT), redes de sensores, protocolos de roteamento para redes de baixa potência e criptografia pós-quântica. É autor da pesquisa HyMRPL, voltada à coexistência de estratégias de roteamento storing e non-storing em redes baseadas no protocolo RPL.",
+        "É coautor do livro Jornada Kubernetes e atua no fortalecimento da comunidade tecnológica, especialmente nos ecossistemas DevOps e cloud native. Sua trajetória reúne pesquisa científica, produção técnica e compartilhamento de conhecimento, aproximando a investigação acadêmica dos desafios práticos da infraestrutura e das tecnologias de nuvem.",
+      ],
+    },
     { nome: "Nome da Palestrante", cargo: "Cargo · Empresa", tema: "Supervisão e controle de usinas renováveis", foto: "" },
     { nome: "Nome do Instrutor", cargo: "Professor · IFRN", tema: "Introdução a CLPs e IEC 61131-3", foto: "" },
     { nome: "Nome da Instrutora", cargo: "Cargo · Empresa", tema: "Python para análise de dados de operação", foto: "" },

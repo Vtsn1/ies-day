@@ -200,13 +200,18 @@
   /* ---------- palestrantes ---------- */
   if (lista(E.palestrantes).length) {
     $("#palestrantes-lista").innerHTML = E.palestrantes.map(function (p, i) {
-      var foto = p.foto ? '<img src="' + esc(p.foto) + '" alt="" loading="lazy">' : esc(iniciais(p.nome));
+      var foto = p.foto ? '<img src="' + esc(p.foto) + '" alt="Foto de ' + esc(p.nome) + '" loading="lazy">' : esc(iniciais(p.nome));
       return (
-        '<li class="palestrante revela" style="--i:' + i + '">' +
+        '<li class="palestrante revela' + (p.foto ? " com-foto" : "") + (lista(p.bio).length ? " com-bio" : "") + '" style="--i:' + i + '">' +
         '<div class="avatar">' + foto + "</div>" +
         "<h3>" + esc(p.nome) + "</h3>" +
         '<p class="cargo">' + esc(p.cargo) + "</p>" +
         (p.tema ? '<p class="palestra-tema">' + esc(p.tema) + "</p>" : "") +
+        (lista(p.areas).length ? '<ul class="areas">' + p.areas.map(function (a) { return "<li>" + esc(a) + "</li>"; }).join("") + "</ul>" : "") +
+        (lista(p.bio).length
+          ? '<details class="bio"><summary>Mini currículo<span class="faq-mais" aria-hidden="true">' + ICONES.mais + "</span></summary>" +
+            '<div class="bio-texto">' + p.bio.map(function (b) { return "<p>" + esc(b) + "</p>"; }).join("") + "</div></details>"
+          : "") +
         "</li>"
       );
     }).join("");
