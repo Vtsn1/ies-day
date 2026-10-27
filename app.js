@@ -207,6 +207,17 @@
         "</li>"
       );
     }).join("");
+    // as mini bios abrem e fecham juntas, para os cartões continuarem do mesmo tamanho
+    var bios = Array.prototype.slice.call(document.querySelectorAll(".palestrante .bio"));
+    var sincronizando = false;
+    bios.forEach(function (d) {
+      d.addEventListener("toggle", function () {
+        if (sincronizando) return;
+        sincronizando = true;
+        bios.forEach(function (o) { if (o !== d) o.open = d.open; });
+        sincronizando = false;
+      });
+    });
     // se a foto não carregar, mostra as iniciais no lugar
     Array.prototype.forEach.call(document.querySelectorAll(".avatar img"), function (img) {
       function falhou() {

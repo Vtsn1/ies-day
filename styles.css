@@ -698,8 +698,9 @@ body::before {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
-  align-items: start;
+  align-items: stretch; /* cartões da mesma linha ficam com a mesma altura */
 }
+.palestrante { display: flex; flex-direction: column; height: 100%; }
 .palestrante {
   padding: 26px 22px;
   border-radius: var(--raio);
