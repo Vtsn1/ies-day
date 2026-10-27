@@ -698,9 +698,9 @@ body::before {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
-  align-items: stretch; /* cartões da mesma linha ficam com a mesma altura */
+  align-items: start; /* cada cartão cresce sozinho ao abrir a mini bio */
 }
-.palestrante { display: flex; flex-direction: column; height: 100%; }
+.palestrante { display: flex; flex-direction: column; }
 .palestrante {
   padding: 26px 22px;
   border-radius: var(--raio);
@@ -754,7 +754,8 @@ body::before {
   background: rgba(58, 70, 255, 0.14);
   border: 1px solid var(--borda);
 }
-.bio { margin-top: 16px; border-top: 1px solid var(--borda); position: relative; z-index: 1; }
+.palestrante .areas { margin-bottom: 16px; }
+.bio { margin-top: auto; border-top: 1px solid var(--borda); position: relative; z-index: 1; }
 .bio summary {
   list-style: none;
   cursor: pointer;
@@ -768,10 +769,11 @@ body::before {
   color: var(--texto);
 }
 .bio summary::-webkit-details-marker { display: none; }
+.bio summary:hover .faq-mais { background: var(--azul); }
 .bio[open] .faq-mais { transform: rotate(45deg); background: var(--azul); }
+.bio[open] .bio-texto { animation: entrar-baixo var(--dur-rapida) var(--ease-saida); }
 .bio-texto { padding-top: 10px; color: var(--texto-2); font-size: 14.5px; line-height: 1.6; }
 .bio-texto p + p { margin-top: 10px; }
-.bio[open] .bio-texto { animation: entrar-baixo var(--dur-rapida) var(--ease-saida); }
 
 /* Local */
 .local-grade {

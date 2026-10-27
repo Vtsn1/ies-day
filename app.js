@@ -207,19 +207,38 @@
         "</li>"
       );
     }).join("");
-    // as mini bios abrem e fecham juntas, para os cartões continuarem do mesmo tamanho
+
+    // só um cartão abre por vez, e só ele cresce; os outros continuam do tamanho de sempre
+    var cartoes = Array.prototype.slice.call(document.querySelectorAll(".palestrante"));
     var bios = Array.prototype.slice.call(document.querySelectorAll(".palestrante .bio"));
-    var sincronizando = false;
     bios.forEach(function (d) {
       d.addEventListener("toggle", function () {
-        if (sincronizando) return;
-        sincronizando = true;
-        bios.forEach(function (o) { if (o !== d) o.open = d.open; });
-        sincronizando = false;
+        if (d.open) bios.forEach(function (o) { if (o !== d) o.open = false; });
       });
     });
+    // todos os cartões fechados ficam com a altura do maior deles
+    function igualaCartoes() {
+      if (bios.some(function (d) { return d.open; })) return;
+      cartoes.forEach(function (c) { c.style.minHeight = ""; });
+      var maior = cartoes.reduce(function (m, c) { return Math.max(m, c.offsetHeight); }, 0);
+      cartoes.forEach(function (c) { c.style.minHeight = maior + "px"; });
+    }
+    igualaCartoes();
+    var esperaIgualar;
+    window.addEventListener("resize", function () {
+      clearTimeout(esperaIgualar);
+      esperaIgualar = setTimeout(function () {
+        var abertos = bios.filter(function (d) { return d.open; });
+        abertos.forEach(function (d) { d.open = false; });
+        igualaCartoes();
+        abertos.forEach(function (d) { d.open = true; });
+      }, 150);
+    });
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(igualaCartoes);
+    window.addEventListener("load", igualaCartoes);
+
     // se a foto não carregar, mostra as iniciais no lugar
-    Array.prototype.forEach.call(document.querySelectorAll(".avatar img"), function (img) {
+    Array.prototype.forEach.call(document.querySelectorAll(".palestrante .avatar img"), function (img) {
       function falhou() {
         var av = img.parentNode;
         if (!av) return;
