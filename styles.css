@@ -842,16 +842,16 @@ body::before {
 }
 
 /* Organização */
-/* colunas em cascata: cartões curtos e longos se encaixam sem buracos */
+/* grade com cartões do mesmo tamanho: todos da linha esticam até o mais alto */
 .equipe {
-  columns: 4 250px;
-  column-gap: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-auto-rows: 1fr;
+  gap: 12px;
+  align-items: stretch;
 }
-.equipe .membro {
-  break-inside: avoid;
-  margin-bottom: 12px;
-}
-.equipe.orientacao { columns: 2 320px; max-width: 760px; }
+.equipe .membro { height: 100%; }
+.equipe.orientacao { grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); max-width: 860px; }
 .membro {
   display: flex;
   flex-direction: column;
