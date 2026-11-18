@@ -1,6 +1,6 @@
 /* =========================================================
    API DO JOGO IES DAY · uma função só, sem dependências
-   Os dados ficam no Redis criado na aba Storage da própria Vercel.
+   Os dados ficam no Supabase (supabase.sql), ou num Redis da Vercel.
    GET  /api/jogo?acao=saude             teste rápido: o armazenamento está ok?
    GET  /api/jogo?acao=estado            estado público (telão, celulares e home)
    GET  /api/jogo?acao=meu&id=...        situação de um participante
@@ -220,6 +220,9 @@ const K = {
 const TEMPO_LIMITE_MS = 8000; // nenhuma chamada ao banco pode travar a função
 
 function configuracao() {
+  const sbUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const sbChave = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (sbUrl && sbChave) return { tipo: "supabase", url: sbUrl.replace(/\/+$/, ""), token: sbChave };
   const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
   if (url && token) return { tipo: "rest", url: url.replace(/\/+$/, ""), token };
@@ -245,6 +248,30 @@ async function pipeRest(cfg, cmds) {
       if (x && x.error) throw new Error("Banco: " + x.error);
       return x ? x.result : null;
     });
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("O banco demorou demais para responder.");
+    throw e;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+// --- Supabase: a função ies_pipe (supabase.sql) roda os comandos numa transação, por HTTPS ---
+async function pipeSupabase(cfg, cmds) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TEMPO_LIMITE_MS);
+  const h = { apikey: cfg.token, "Content-Type": "application/json" };
+  if (!cfg.token.startsWith("sb_")) h.Authorization = "Bearer " + cfg.token; // chave antiga (JWT service_role)
+  try {
+    const r = await fetch(cfg.url + "/rest/v1/rpc/ies_pipe", {
+      method: "POST",
+      headers: h,
+      body: JSON.stringify({ cmds: cmds.map((c) => c.map(String)) }),
+      signal: ctrl.signal,
+    });
+    const d = await r.json().catch(() => null);
+    if (!r.ok || !Array.isArray(d)) throw new Error("Banco respondeu " + r.status + (d && d.message ? ": " + d.message : ""));
+    return d;
   } catch (e) {
     if (e.name === "AbortError") throw new Error("O banco demorou demais para responder.");
     throw e;
@@ -396,6 +423,7 @@ function memCmd(c) {
 
 async function pipe(cmds) {
   const cfg = configuracao();
+  if (cfg.tipo === "supabase") return pipeSupabase(cfg, cmds);
   if (cfg.tipo === "rest") return pipeRest(cfg, cmds);
   if (cfg.tipo === "tcp") return pipeTcp(cfg, cmds);
   return cmds.map(memCmd);
@@ -826,7 +854,7 @@ module.exports = async function handler(req, res) {
         return res.status(200).json({
           ok: true,
           banco: cfg.tipo === "memoria" ? "memoria" : "conectado",
-          armazenamento: cfg.tipo === "rest" ? "Redis da Vercel (HTTPS)" : cfg.tipo === "tcp" ? "Redis da Vercel (direto)" : "memória temporária: crie o Redis na aba Storage da Vercel",
+          armazenamento: cfg.tipo === "supabase" ? "Supabase (HTTPS)" : cfg.tipo === "rest" ? "Redis da Vercel (HTTPS)" : cfg.tipo === "tcp" ? "Redis da Vercel (direto)" : "memória temporária: crie o Redis na aba Storage da Vercel",
           participantes: Number(n || 0),
         });
       }
