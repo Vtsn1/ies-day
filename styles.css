@@ -1082,3 +1082,19 @@ body::before {
   .js .revela { opacity: 1; }
   .chamada .anel, .botao.primario::before { display: none; }
 }
+
+/* link do jogo no menu */
+.menu a.menu-jogo { color: #ffb08a; }
+.menu a.menu-jogo::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 7px;
+  border-radius: 50%;
+  background: #ff6a1f;
+  box-shadow: 0 0 0 0 rgba(255, 106, 31, 0.6);
+  animation: pulso-jogo 1.6s ease-out infinite;
+  vertical-align: middle;
+}
+@keyframes pulso-jogo { to { box-shadow: 0 0 0 9px rgba(255, 106, 31, 0); } }

@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Jogo ao vivo · IES DAY</title>
+  <meta name="description" content="Participe ao vivo do IES DAY: reações, perguntas, Quiz Sem Fronteiras e Desafio Sem Fronteiras.">
+  <meta name="theme-color" content="#030824">
+  <link rel="icon" href="logo-ies.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="jogo.css">
+</head>
+<body class="pg-jogo">
+  <header class="j-topo">
+    <a class="marca" href="/" aria-label="Voltar ao site do IES DAY">
+      <img class="marca-logo" src="logo-ies.png" alt="" width="40" height="40">
+      <span><b>IES</b> DAY</span>
+    </a>
+    <span class="j-conexao" id="conexao" hidden></span>
+  </header>
+
+  <main class="j-main">
+    <!-- entrada -->
+    <section class="j-cartao" id="entrar" hidden>
+      <p class="secao-rotulo">Jogo ao vivo</p>
+      <h1 class="j-titulo">Entre no jogo</h1>
+      <p class="j-sub">Mande reações e perguntas para o telão, jogue o Quiz Sem Fronteiras e encare o Desafio. Seus dados servem só para controle e premiação.</p>
+      <form id="form-entrar" novalidate>
+        <label class="j-campo">
+          <span>Nome</span>
+          <input id="nome" name="nome" autocomplete="name" maxlength="60" required placeholder="Como quer aparecer no ranking">
+        </label>
+        <label class="j-campo" id="campo-matricula">
+          <span>Matrícula do IFRN</span>
+          <input id="matricula" name="matricula" inputmode="numeric" maxlength="20" placeholder="Ex.: 20212012090023">
+        </label>
+        <label class="j-check">
+          <input type="checkbox" id="visitante">
+          <span>Não sou do IFRN (visitante)</span>
+        </label>
+        <p class="j-erro" id="erro-entrar" role="alert"></p>
+        <button class="botao primario j-largo" type="submit">Entrar no jogo</button>
+      </form>
+    </section>
+
+    <!-- painel do participante -->
+    <section id="painel" hidden>
+      <div class="j-eu">
+        <div>
+          <strong id="eu-nome"></strong>
+          <span>ID <b id="eu-id"></b></span>
+        </div>
+        <div class="j-pontos"><span id="eu-pontos">0</span><small>pontos</small></div>
+      </div>
+
+      <div class="j-cartao" id="palco" aria-live="polite"></div>
+
+      <div class="j-cartao" id="interagir">
+        <p class="secao-rotulo">Interaja com o telão</p>
+        <div class="j-emojis" id="emojis" role="group" aria-label="Mandar reação"></div>
+        <div class="j-abas" role="tablist">
+          <button type="button" class="j-aba" data-tipo="pergunta" aria-selected="true">Pergunta</button>
+          <button type="button" class="j-aba" data-tipo="comentario" aria-selected="false">Comentário</button>
+        </div>
+        <form id="form-msg" novalidate>
+          <textarea id="msg" maxlength="280" rows="3" placeholder="Faça uma pergunta para os palestrantes"></textarea>
+          <div class="j-linha">
+            <small id="msg-conta">0/280</small>
+            <button class="botao primario pequeno" type="submit">Enviar</button>
+          </div>
+          <p class="j-nota">Perguntas e comentários passam pela organização antes de aparecer no telão.</p>
+        </form>
+      </div>
+
+      <button type="button" class="j-sair" id="sair">Não é você? Sair</button>
+    </section>
+  </main>
+
+  <div class="j-aviso" id="aviso" role="status" aria-live="polite"></div>
+
+  <script src="jogo-comum.js"></script>
+  <script src="jogo.js"></script>
+</body>
+</html>

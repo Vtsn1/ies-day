@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Telão · IES DAY</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#030824">
+  <link rel="icon" href="logo-ies.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="jogo.css">
+</head>
+<body class="pg-telao">
+  <div class="t-tela">
+    <aside class="t-lado">
+      <div class="t-marca"><img src="logo-ies.png" alt="">IES <span>DAY</span></div>
+      <div class="t-qr" id="qr" aria-label="QR code para entrar no jogo"></div>
+      <div>
+        <p class="t-chamada">Aponte a câmera e entre no jogo</p>
+        <p class="t-url" id="url"></p>
+      </div>
+      <p class="t-contador"><span id="participantes">0</span><small>pessoas no jogo</small></p>
+    </aside>
+    <main class="t-centro" id="centro"></main>
+  </div>
+  <div class="t-ceu-emojis" id="ceu-emojis" aria-hidden="true"></div>
+  <button class="botao secundario pequeno t-tela-cheia" id="tela-cheia" type="button">Tela cheia (F)</button>
+
+  <script src="qrcode.js"></script>
+  <script src="jogo-comum.js"></script>
+  <script src="telao.js"></script>
+</body>
+</html>

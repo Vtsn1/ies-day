@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Organização · Jogo IES DAY</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#030824">
+  <link rel="icon" href="logo-ies.png" type="image/png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&family=Montserrat:wght@700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="jogo.css">
+</head>
+<body class="pg-jogo pg-admin">
+  <header class="j-topo">
+    <a class="marca" href="/" aria-label="Site do IES DAY">
+      <img class="marca-logo" src="logo-ies.png" alt="" width="40" height="40">
+      <span><b>IES</b> DAY · Organização</span>
+    </a>
+    <div class="a-botoes" style="margin:0">
+      <a class="botao secundario pequeno" href="/telao" target="_blank" rel="noopener">Abrir telão</a>
+    </div>
+  </header>
+
+  <main class="j-main">
+    <section class="j-cartao" id="login">
+      <h1 class="j-titulo">Painel da organização</h1>
+      <p class="j-sub">Digite a chave definida na variável ADMIN_KEY da Vercel.</p>
+      <form id="form-login">
+        <label class="j-campo"><span>Chave</span><input id="chave" type="password" autocomplete="current-password"></label>
+        <p class="j-erro" id="erro-login"></p>
+        <button class="botao primario" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <section id="painel" hidden>
+      <div class="a-grade">
+        <div class="j-cartao">
+          <p class="secao-rotulo">Etapa atual</p>
+          <p class="a-estado" id="estado"></p>
+          <div class="a-botoes" id="etapas">
+            <button class="botao secundario" data-etapa="interacao">1 · Interação</button>
+            <button class="botao secundario" data-etapa="quiz">2 · Quiz</button>
+            <button class="botao secundario" data-etapa="desafio">3 · Desafio</button>
+            <button class="botao secundario" data-etapa="encerrado">Resultado final</button>
+          </div>
+          <p class="j-nota">O telão e os celulares mudam sozinhos em até 3 segundos.</p>
+        </div>
+
+        <div class="j-cartao">
+          <p class="secao-rotulo">Quiz Sem Fronteiras</p>
+          <p class="a-estado" id="quiz-estado"></p>
+          <div class="a-botoes">
+            <button class="botao primario" id="proxima">Abrir próxima pergunta</button>
+            <button class="botao secundario" id="revelar">Revelar resposta</button>
+          </div>
+          <div class="a-perguntas" id="perguntas"></div>
+        </div>
+
+        <div class="j-cartao">
+          <p class="secao-rotulo">Desafio Sem Fronteiras (etapa 2)</p>
+          <p class="a-estado" id="desafio-estado"></p>
+          <div class="a-botoes">
+            <button class="botao primario" id="iniciar-desafio">Iniciar desafio (30 min)</button>
+            <button class="botao secundario" id="mais-tempo">+5 minutos</button>
+            <button class="botao secundario" id="encerrar-desafio">Encerrar agora</button>
+          </div>
+        </div>
+
+        <div class="j-cartao">
+          <p class="secao-rotulo">Moderação · <span id="n-pendentes">0</span> esperando</p>
+          <div class="a-rolagem" id="pendentes"></div>
+          <details style="margin-top:12px">
+            <summary style="cursor:pointer;color:var(--texto-2)">Já moderadas</summary>
+            <div class="a-rolagem" id="recentes"></div>
+          </details>
+        </div>
+
+        <div class="j-cartao" style="grid-column:1/-1">
+          <p class="secao-rotulo">Respostas do desafio</p>
+          <div class="a-rolagem"><table class="a-tabela" id="tabela-desafio"></table></div>
+        </div>
+
+        <div class="j-cartao" style="grid-column:1/-1">
+          <p class="secao-rotulo">Ranking geral</p>
+          <div class="a-botoes">
+            <button class="botao secundario" id="exportar">Baixar planilha (CSV)</button>
+          </div>
+          <div class="a-rolagem"><table class="a-tabela" id="tabela-ranking"></table></div>
+        </div>
+
+        <div class="j-cartao" style="grid-column:1/-1">
+          <p class="secao-rotulo">Zerar o jogo</p>
+          <p class="j-sub">Apaga participantes, mensagens e respostas. Use só para limpar os testes antes do evento.</p>
+          <div class="a-botoes">
+            <input id="confirma-zerar" placeholder="Digite ZERAR" style="max-width:180px" class="j-campo-inline">
+            <button class="botao secundario" id="zerar">Zerar tudo</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="j-aviso" id="aviso" role="status" aria-live="polite"></div>
+
+  <script src="jogo-comum.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

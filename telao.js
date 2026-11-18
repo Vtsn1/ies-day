@@ -1,0 +1,186 @@
+/* =========================================================
+   JOGO IES DAY · telão (projetar em tela cheia)
+   ========================================================= */
+(function () {
+  "use strict";
+  var J = window.JOGO;
+  var $ = function (s) { return document.querySelector(s); };
+  var estado = null;
+  var chave = "";
+  var emojisVistos = {};
+
+  /* QR code apontando para a página do jogo */
+  var link = location.origin + "/jogo";
+  $("#url").textContent = link.replace(/^https?:\/\//, "");
+  try {
+    var qr = qrcode(0, "M");
+    qr.addData(link);
+    qr.make();
+    $("#qr").innerHTML = qr.createSvgTag({ cellSize: 8, margin: 0, scalable: true });
+  } catch (e) {
+    $("#qr").textContent = link;
+  }
+
+  function telaCheia() {
+    if (!document.fullscreenElement) document.documentElement.requestFullscreen && document.documentElement.requestFullscreen();
+    else document.exitFullscreen && document.exitFullscreen();
+  }
+  $("#tela-cheia").addEventListener("click", telaCheia);
+  document.addEventListener("keydown", function (e) { if (e.key === "f" || e.key === "F") telaCheia(); });
+
+  /* emojis subindo pela tela */
+  function soltaEmoji(e) {
+    var el = document.createElement("span");
+    el.className = "t-voo";
+    el.textContent = e;
+    el.style.left = 28 + Math.random() * 68 + "vw";
+    el.style.setProperty("--dx", (Math.random() * 16 - 8).toFixed(1) + "vw");
+    el.style.setProperty("--rot", (Math.random() * 60 - 30).toFixed(0) + "deg");
+    el.style.setProperty("--dur", (3.2 + Math.random() * 2).toFixed(2) + "s");
+    el.style.fontSize = (2.6 + Math.random() * 2) + "vw";
+    $("#ceu-emojis").appendChild(el);
+    setTimeout(function () { el.remove(); }, 5600);
+  }
+  function novosEmojis(lista) {
+    var novos = lista.filter(function (m) { return !emojisVistos[m.id]; });
+    novos.reverse().forEach(function (m, i) {
+      emojisVistos[m.id] = 1;
+      setTimeout(function () { soltaEmoji(m.texto); }, i * 140); // espalha no tempo
+    });
+  }
+
+  function mural() {
+    var m = (estado.mural || []).slice();
+    var destaque = m.filter(function (x) { return x.status === "destaque"; }).slice(0, 1);
+    var resto = m.filter(function (x) { return x.status !== "destaque"; }).slice(0, 8);
+    var itens = destaque.concat(resto);
+    if (!itens.length) return '<p class="t-vazio">As perguntas e comentários aprovados aparecem aqui.</p>';
+    return itens.map(function (x) {
+      var rot = x.tipo === "pergunta" ? (x.status === "destaque" ? "Pergunta selecionada" : "Pergunta") : "Comentário";
+      return '<div class="t-msg ' + x.tipo + (x.status === "destaque" ? " em-destaque" : "") + '"><b>' + rot + " · " + J.esc(x.nome) + "</b>" + J.esc(x.texto) + "</div>";
+    }).join("");
+  }
+
+  function ranking(n) {
+    var r = (estado.ranking || []).slice(0, n);
+    if (!r.length) return '<p class="t-vazio">Ainda sem pontuação.</p>';
+    return '<ol class="t-rank">' + r.map(function (x, i) {
+      return '<li style="animation-delay:' + i * 0.06 + 's"><b>' + (i + 1) + "º</b><span>" + J.esc(x.nome) + "</span><strong>" + x.pontos + "</strong></li>";
+    }).join("") + "</ol>";
+  }
+
+  function telaInteracao() {
+    return (
+      '<p class="t-rotulo">Ao vivo</p>' +
+      '<h1 class="t-titulo">Energia sem <em>Fronteiras</em></h1>' +
+      '<div class="t-mural">' + mural() + "</div>"
+    );
+  }
+
+  function telaQuiz() {
+    var q = estado.quiz;
+    if (!q || !q.pergunta) {
+      return '<p class="t-rotulo">Quiz Sem Fronteiras</p><h1 class="t-titulo">Entre pelo QR code: o quiz <em>vai começar!</em></h1>' +
+        '<p class="t-info">10 perguntas · ' + (q ? q.limite : 30) + " segundos cada · quanto mais rápido acertar, mais pontos</p>";
+    }
+    var tot = q.respondidos || 0;
+    var ops = J.LETRAS.map(function (l) {
+      var n = q.distribuicao ? q.distribuicao[l] : 0;
+      var pct = tot ? Math.round((n / tot) * 100) : 0;
+      return '<div class="t-op' + (q.revelado && q.pergunta.correta === l ? " certa" : "") + '">' +
+        (q.revelado ? '<i class="t-dist" style="width:' + pct + '%"></i>' : "") +
+        "<b>" + l + "</b><span>" + J.esc(q.pergunta.opcoes[l]) + "</span>" +
+        (q.revelado ? '<span class="t-pct">' + pct + "%</span>" : "") + "</div>";
+    }).join("");
+    return (
+      '<div class="t-quiz-cab"><div><p class="t-rotulo">Quiz Sem Fronteiras · Pergunta ' + (q.indice + 1) + " de " + q.total + "</p>" +
+      '<p class="t-info">' + J.esc(q.pergunta.tema) + "</p></div>" +
+      '<div style="text-align:right"><div class="t-tempo" id="tempo"></div><p class="t-info" id="respondidos">' + tot + " resposta(s)</p></div></div>" +
+      '<div class="t-barra"><i id="barra"></i></div>' +
+      '<p class="t-enunciado' + (q.revelado ? " compacto" : "") + '">' + J.esc(q.pergunta.texto) + "</p>" +
+      '<div class="t-ops' + (q.revelado ? " revelado" : "") + '">' + ops + "</div>" +
+      (q.revelado
+        ? '<div class="t-duas" style="margin-top:1.2vw"><div class="t-just"><b>Resposta ' + q.pergunta.correta + ".</b> " + J.esc(q.pergunta.justificativa) + "</div>" +
+          "<div>" + ranking(3) + "</div></div>"
+        : "")
+    );
+  }
+
+  function telaDesafio() {
+    var d = estado.desafio;
+    if (!d) return '<h1 class="t-titulo">O desafio já vai começar</h1>';
+    return (
+      '<p class="t-rotulo">Etapa 2 · Desafio Sem Fronteiras</p>' +
+      '<h1 class="t-titulo">' + J.esc(d.titulo) + "</h1>" +
+      '<div class="t-duas"><div class="t-desafio">' +
+      d.enunciado.map(function (p) { return "<p>" + J.esc(p) + "</p>"; }).join("") +
+      "<ul>" + d.itens.map(function (i) { return "<li>" + J.esc(i) + "</li>"; }).join("") + "</ul></div>" +
+      '<div style="text-align:center;align-self:center">' +
+      (d.terminou
+        ? '<p class="t-rotulo">Tempo esgotado</p><p class="t-info" style="margin:1vw 0">Valor de referência</p><p class="t-grande" style="font-size:4vw">' + J.reais(d.referencia) + "</p>"
+        : '<p class="t-rotulo">Tempo restante</p><p class="t-grande" id="tempo"></p><div class="t-barra"><i id="barra"></i></div>') +
+      '<p class="t-info" style="margin-top:1vw"><b id="enviados">' + d.enviados + "</b> resposta(s) enviada(s)</p>" +
+      "</div></div>"
+    );
+  }
+
+  function telaFim() {
+    var r = estado.ranking || [];
+    var p = [r[1], r[0], r[2]];
+    var pos = ["2º", "1º", "3º"];
+    return (
+      '<p class="t-rotulo">Resultado final</p>' +
+      '<h1 class="t-titulo">Quiz <em>Sem Fronteiras</em></h1>' +
+      '<div class="t-podio">' + p.map(function (x, i) {
+        return "<div><strong>" + pos[i] + "</strong><span>" + (x ? J.esc(x.nome) : "·") + "</span><small>" + (x ? x.pontos + " pontos" : "") + "</small></div>";
+      }).join("") + "</div>" +
+      ranking(10)
+    );
+  }
+
+  function chaveDe(d) {
+    var q = d.quiz || {}, de = d.desafio || {};
+    var m = (d.mural || []).map(function (x) { return x.id + x.status; }).join(",");
+    var r = (d.ranking || []).map(function (x) { return x.codigo + x.pontos; }).join(",");
+    return [d.etapa, q.indice, q.revelado, de.inicio, de.terminou, m, d.etapa === "encerrado" || q.revelado ? r : ""].join("|");
+  }
+
+  function desenha() {
+    var k = chaveDe(estado);
+    if (k !== chave) {
+      chave = k;
+      var e = estado.etapa;
+      $("#centro").innerHTML = e === "quiz" ? telaQuiz() : e === "desafio" ? telaDesafio() : e === "encerrado" ? telaFim() : telaInteracao();
+    }
+    // números que mudam sem redesenhar a tela
+    $("#participantes").textContent = estado.participantes;
+    var r = $("#respondidos");
+    if (r && estado.quiz) r.textContent = estado.quiz.respondidos + " resposta(s)";
+    var en = $("#enviados");
+    if (en && estado.desafio) en.textContent = estado.desafio.enviados;
+  }
+
+  setInterval(function () {
+    if (!estado) return;
+    var t = $("#tempo"), b = $("#barra");
+    if (!t) return;
+    var resta, total;
+    if (estado.etapa === "quiz" && estado.quiz) {
+      total = estado.quiz.limite * 1000;
+      resta = estado.quiz.revelado ? 0 : estado.quiz.inicio + total - J.agora();
+    } else if (estado.etapa === "desafio" && estado.desafio) {
+      total = estado.desafio.fim - estado.desafio.inicio;
+      resta = estado.desafio.fim - J.agora();
+    } else return;
+    resta = Math.max(0, resta);
+    t.textContent = resta > 0 ? J.relogio(resta) : "00:00";
+    t.classList.toggle("urgente", resta > 0 && resta < Math.min(10000, total * 0.2));
+    if (b) b.style.transform = "scaleX(" + (total ? resta / total : 0) + ")";
+  }, 250);
+
+  J.acompanha(1500, function (d) {
+    estado = d;
+    novosEmojis(d.emojis || []);
+    desenha();
+  });
+})();
