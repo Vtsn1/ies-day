@@ -330,6 +330,19 @@
   }, 250);
 
   /* ---------- interação: emojis, perguntas e comentários ---------- */
+  // a reação sobe a partir do botão tocado, para quem mandou ver que foi
+  function vooLocal(b, e) {
+    var r = b.getBoundingClientRect();
+    var el = document.createElement("span");
+    el.className = "j-voo";
+    el.textContent = e;
+    el.style.left = Math.round(r.left + r.width / 2) + "px";
+    el.style.top = Math.round(r.top) + "px";
+    el.style.setProperty("--dx", Math.round(Math.random() * 50 - 25) + "px");
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 1500);
+  }
+
   function montaInteracao() {
     $("#emojis").innerHTML = J.EMOJIS.map(function (e) {
       return '<button type="button" class="j-emoji" data-e="' + e + '" aria-label="Mandar ' + e + '">' + e + "</button>";
@@ -341,6 +354,7 @@
       if (Date.now() - ultimo < 600) return; // evita metralhadora de emoji
       ultimo = Date.now();
       b.classList.remove("pulou"); void b.offsetWidth; b.classList.add("pulou");
+      vooLocal(b, b.dataset.e);
       // emoji é efêmero: vai direto, fora da fila, para não atrasar resposta do quiz
       J.chama("POST", "mensagem", { id: eu.id, tipo: "emoji", texto: b.dataset.e }).catch(function () {});
     });

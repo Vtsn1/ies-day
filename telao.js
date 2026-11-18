@@ -28,21 +28,35 @@
   $("#tela-cheia").addEventListener("click", telaCheia);
   document.addEventListener("keydown", function (e) { if (e.key === "f" || e.key === "F") telaCheia(); });
 
-  /* emojis subindo pelo fundo do telão, por trás dos cartões */
+  /* reações: sobem pela frente da tela, nítidas, como nas lives.
+     Saem só da área central, para nunca passar por cima do QR code. */
   function soltaEmoji(e) {
     var ceu = $("#ceu-emojis");
-    if (ceu.childElementCount > 80) return; // chuva de reações: não pesa no projetor
+    if (ceu.childElementCount > 120) return; // chuva de reações: não pesa no projetor
+    var larg = window.innerWidth;
+    var ini = 0, fim = larg;
+    var centro = $("#centro");
+    if (centro && larg > window.innerHeight) {
+      var r = centro.getBoundingClientRect();
+      ini = r.left; fim = r.right;
+    }
+    var etapa = estado ? estado.etapa : "interacao";
+    var noJogo = etapa === "quiz" || etapa === "desafio"; // menores, para não cobrir a pergunta
+    var tam = (noJogo ? 2.4 : 3.2) + Math.random() * (noJogo ? 1.4 : 2.2);
+    var dur = (noJogo ? 3.2 : 4.6) + Math.random() * (noJogo ? 1.2 : 1.8);
     var el = document.createElement("span");
-    var dur = 5 + Math.random() * 3;
     el.className = "t-voo";
     el.innerHTML = "<i>" + J.esc(e) + "</i>";
-    el.style.left = (2 + Math.random() * 92).toFixed(1) + "%";
-    el.style.fontSize = "calc(" + (2.8 + Math.random() * 2.4).toFixed(2) + " * var(--u))";
+    // margem do tamanho do emoji + balanço lateral, para não encostar no QR nem sair pela direita
+    var u = Math.min(window.innerWidth * 0.012, window.innerHeight * 0.0178);
+    var folga = tam * u + 0.03 * larg;
+    el.style.left = (ini + folga / 2 + Math.random() * Math.max(0, fim - ini - folga * 1.5)).toFixed(0) + "px";
+    el.style.fontSize = "calc(" + tam.toFixed(2) + " * var(--u))";
     el.style.setProperty("--dur", dur.toFixed(2) + "s");
-    el.style.setProperty("--dx", (0.8 + Math.random() * 2.2).toFixed(1) + "vw");
-    el.style.setProperty("--balanco", (1.2 + Math.random() * 1.2).toFixed(2) + "s");
+    el.style.setProperty("--dx", (0.6 + Math.random() * 1.6).toFixed(1) + "vw");
+    el.style.setProperty("--balanco", (1.1 + Math.random() * 1).toFixed(2) + "s");
     ceu.appendChild(el);
-    setTimeout(function () { el.remove(); }, dur * 1000 + 200);
+    setTimeout(function () { el.remove(); }, dur * 1000 + 300);
   }
   function novosEmojis(lista) {
     var novos = lista.filter(function (m) { return !emojisVistos[m.id]; });
@@ -150,6 +164,7 @@
   }
 
   function desenha() {
+    document.body.setAttribute("data-etapa", estado.etapa); // controla até onde as reações sobem
     var k = chaveDe(estado);
     if (k !== chave) {
       chave = k;
