@@ -153,12 +153,13 @@
       });
       listaEl.setAttribute("aria-label", dias[i].dia + " " + (dias[i].data || ""));
       listaEl.innerHTML = lista(dias[i].itens).map(function (it, k) {
+        if (it.separador) return '<li class="separador" style="--i:' + k + '"><span>' + esc(it.separador) + "</span></li>";
         return (
           '<li class="item tipo-' + slug(it.tipo) + '" style="--i:' + k + '">' +
           '<time class="hora">' + esc(it.hora) + "</time>" +
           '<div class="item-corpo">' +
           (it.tipo ? '<span class="etiqueta">' + esc(it.tipo) + "</span>" : "") +
-          "<h3>" + esc(it.titulo) + "</h3>" +
+          "<h3>" + esc(it.titulo) + (it.destaque ? ' <span class="destaque">' + esc(it.destaque) + "</span>" : "") + "</h3>" +
           (it.quem ? '<p class="quem">' + esc(it.quem) + "</p>" : "") +
           (it.sala ? '<p class="sala">' + ICONES.pino + esc(it.sala) + "</p>" : "") +
           "</div></li>"
