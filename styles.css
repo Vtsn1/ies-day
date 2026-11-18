@@ -848,7 +848,7 @@ body::before {
 /* grade com cartões do mesmo tamanho: todos da linha esticam até o mais alto */
 .equipe {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); /* 3 por linha no computador */
   grid-auto-rows: 1fr;
   gap: 12px;
   align-items: stretch;
