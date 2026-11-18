@@ -171,23 +171,24 @@ const PERGUNTAS = [
 // ETAPA 2 · Desafio Sem Fronteiras (30 minutos, aceita respostas até o fim)
 const DESAFIO = {
   duracaoMin: 30,
-  titulo: "Desafio Sem Fronteiras: vale a pena subir a tensão?",
+  titulo: "Desafio Sem Fronteiras: quanto custa um ataque hacker a uma bateria?",
   enunciado: [
-    "Um parque eólico de 30 MW no interior do Rio Grande do Norte escoa sua energia por uma linha de transmissão trifásica de 69 kV com 40 km de extensão. A resistência dos condutores é de 0,15 Ω/km por fase. Considere fator de potência unitário e despreze perdas por efeito corona e a reatância da linha.",
-    "A transmissora estuda reconstruir a linha em 138 kV, mantendo os mesmos condutores. Para o estudo, admita que o parque opera o equivalente a 3.942 horas por ano em plena carga (fator de capacidade de 45%) e que a energia é vendida a R$ 200,00/MWh.",
+    "Transição energética: uma usina solar de 60 MWp no Seridó potiguar sofre cortes de geração (curtailment) determinados pelo ONS perto do meio-dia, quando a rede local não comporta toda a energia renovável. Para aproveitar essa energia, a empresa instalou um BESS (sistema de armazenamento em baterias) de 20 MW / 80 MWh, com células de lítio-ferro-fosfato (LFP).",
+    "BESS: todo dia o sistema faz 1 ciclo. Carrega só com energia que seria cortada (custo zero) e descarrega no pico da noite, vendendo a R$ 600,00/MWh. Para preservar a vida útil, opera com profundidade de descarga de 90% da capacidade nominal. Admita que essa profundidade limita a energia absorvida da usina em cada carga e que a eficiência de ida e volta (carga + descarga) é de 85% sobre essa energia.",
+    "Cibersegurança: um invasor entrou pela VPN do fornecedor de manutenção, que não exigia autenticação multifator (MFA), e criptografou o servidor do EMS/SCADA com ransomware. Por segurança, o BESS ficou parado 12 dias até a restauração. A resposta ao incidente (perícia, reinstalação e auditoria) custou R$ 350.000,00. Um projeto de segmentação de rede no padrão IEC 62443, com MFA, teria evitado o ataque e custava R$ 180.000,00.",
   ],
   itens: [
-    "a) Qual é a corrente por fase na linha em 69 kV, com o parque em plena carga?",
-    "b) Quais são as perdas por efeito Joule na linha em 69 kV (em kW e em % da potência gerada)?",
-    "c) Quais seriam as perdas na mesma situação com a linha em 138 kV?",
-    "d) RESPOSTA FINAL: quanto a transmissora deixa de perder por ano, em reais, ao operar em 138 kV?",
+    "a) Quanta energia o BESS absorve da usina em cada ciclo, respeitando a profundidade de descarga?",
+    "b) Quanta energia ele entrega à rede por ciclo e qual é a receita diária?",
+    "c) Qual foi o prejuízo total do ataque (receita perdida nos 12 dias + resposta ao incidente)?",
+    "d) RESPOSTA FINAL: quanto a empresa teria economizado se tivesse investido na segmentação com MFA antes do ataque?",
   ],
-  pergunta: "Resposta final (item d): economia anual em R$",
+  pergunta: "Resposta final (item d): economia em R$",
   unidade: "R$",
-  // Gabarito: I = 30e6 / (√3 · 69e3) ≈ 251,0 A; perdas = 3·I²·R = 3 · 251,0² · 6 Ω ≈ 1.134 kW (3,78%)
-  // Em 138 kV: I ≈ 125,5 A; perdas ≈ 283,6 kW (0,95%). Diferença ≈ 850,7 kW
-  // Energia evitada = 0,8507 MW · 3.942 h ≈ 3.353 MWh/ano → R$ 670.662/ano
-  referencia: 670662,
+  // Gabarito: energia absorvida = 80 MWh · 0,90 = 72 MWh; entregue = 72 · 0,85 = 61,2 MWh
+  // Receita diária = 61,2 MWh · R$ 600 = R$ 36.720; perdida em 12 dias = R$ 440.640
+  // Prejuízo = 440.640 + 350.000 = R$ 790.640 → economia = 790.640 − 180.000 = R$ 610.640
+  referencia: 610640,
   // tolerâncias para pontuar
   faixas: [
     { erroMax: 0.02, pontos: 2000 },
