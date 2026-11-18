@@ -55,8 +55,24 @@
     }
     if (info.ok && info.acao === "desafio") { aviso("Resposta do desafio registrada!", "ok"); atualizaMeu(); }
     if (!info.ok && !info.rede && info.erro) {
+      if (info.status === 404 && info.acao !== "entrar" && eu) {
+        // banco zerado: cadastra de novo e reenvia a mesma ação, sem incomodar a pessoa
+        J.enfileira("entrar", eu);
+        J.enfileira(info.acao, info.item.corpo);
+        return;
+      }
       aviso(info.erro, "erro");
-      if (info.status === 404 && info.acao !== "entrar" && eu) J.enfileira("entrar", eu); // banco zerado: cadastra de novo
+      var c = info.item.corpo;
+      if (info.acao === "responder") {
+        // recusada (pausa, tempo): a tela volta a mostrar o que vale no servidor
+        var resp = minhasRespostas();
+        if (resp[c.pergunta] === c.opcao) { delete resp[c.pergunta]; J.guarda(CHAVE_RESP, resp); }
+        atualizaMeu();
+      }
+      if (info.acao === "mensagem" && c.tipo !== "emoji" && !$("#msg").value) {
+        $("#msg").value = c.texto; // não perde o que a pessoa escreveu
+        $("#msg-conta").textContent = c.texto.length + "/280";
+      }
     }
   });
 
@@ -102,10 +118,19 @@
     J.acompanha(2500, recebe, function (e) { if (e.rede) conexao(J.fila().length, true); });
   }
 
+  var ultimoToque = 0;
   function atualizaMeu() {
     if (!eu) return;
+    var pedido = Date.now();
     J.chama("GET", "meu", null, "&id=" + encodeURIComponent(eu.id)).then(function (d) {
       meusDados = d;
+      // respostas guardadas no aparelho seguem o servidor (ex.: jogo zerado, pergunta reaberta),
+      // exceto se houve toque depois deste pedido ou ainda há resposta na fila
+      if (pedido > ultimoToque && !J.fila().some(function (x) { return x.acao === "responder"; })) {
+        var local = {};
+        Object.keys(d.respostas).forEach(function (i) { local[i] = d.respostas[i].opcao; });
+        J.guarda(CHAVE_RESP, local);
+      }
       $("#eu-pontos").textContent = d.total;
       chaveTela = ""; // força redesenho com os dados novos
       if (estado) desenha();
@@ -134,7 +159,13 @@
     var q = d.quiz || {};
     var r = minhasRespostas();
     var de = d.desafio || {};
-    return [d.etapa, q.indice, q.revelado, r[q.indice] || "", de.inicio, de.terminou, !!d.pausado, meusDados ? meusDados.total : ""].join("|");
+    var quiz = d.etapa === "quiz";
+    return [d.etapa, q.indice, q.revelado, r[q.indice] || "", de.inicio, de.terminou, quiz && !!d.pausado, quiz && tempoAcabou(), meusDados ? meusDados.total : ""].join("|");
+  }
+
+  function tempoAcabou() {
+    var q = estado.quiz;
+    return !!q && !q.revelado && J.restante(q.inicio + q.limite * 1000, estado.pausado) <= 0;
   }
 
   function desenha() {
@@ -178,7 +209,7 @@
       if (minha === l) cls += " escolhida";
       if (q.revelado && q.pergunta.correta === l) cls += " certa";
       else if (q.revelado && minha === l) cls += " errada";
-      var dis = q.revelado || estado.pausado ? " disabled" : "";
+      var dis = q.revelado || estado.pausado || tempoAcabou() ? " disabled" : "";
       return '<button type="button" class="' + cls + '" data-op="' + l + '"' + dis + "><b>" + l + "</b><span>" + J.esc(q.pergunta.opcoes[l]) + "</span></button>";
     }).join("");
     var rodape = "";
@@ -190,7 +221,9 @@
         "<strong>" + (!minha ? "Você não respondeu a tempo." : acertou ? "Acertou! " + (pts != null ? "+" + pts + " pontos" : "") : "Não foi dessa vez.") + "</strong>" +
         "<p>Resposta certa: <b>" + q.pergunta.correta + "</b>. " + J.esc(q.pergunta.justificativa) + "</p></div>";
     } else if (minha) {
-      rodape = '<p class="j-dica">Resposta <b>' + minha + "</b> registrada. Pode trocar até o tempo acabar; vale a última.</p>";
+      rodape = '<p class="j-dica">Resposta <b>' + minha + "</b> registrada. " + (tempoAcabou() ? "Aguarde o resultado no telão." : "Pode trocar até o tempo acabar; vale a última.") + "</p>";
+    } else if (tempoAcabou()) {
+      rodape = '<p class="j-dica">Tempo esgotado. Aguarde o resultado no telão.</p>';
     } else if (estado.pausado) {
       rodape = '<p class="j-dica">Jogo pausado. As alternativas voltam assim que a organização continuar.</p>';
     } else {
@@ -250,6 +283,7 @@
         var resp = minhasRespostas();
         if (resp[q.indice] === b.dataset.op) return;
         resp[q.indice] = b.dataset.op;
+        ultimoToque = Date.now();
         J.guarda(CHAVE_RESP, resp); // backup local na hora do toque
         J.enfileira("responder", { id: eu.id, pergunta: q.indice, opcao: b.dataset.op });
         if (navigator.vibrate) navigator.vibrate(30);
@@ -291,10 +325,8 @@
     t.classList.toggle("pausado", !!estado.pausado);
     t.classList.toggle("urgente", !estado.pausado && resta > 0 && resta < Math.min(10000, total * 0.2));
     if (b) b.style.transform = "scaleX(" + (total ? resta / total : 0) + ")";
-    // trava as alternativas quando o tempo acaba
-    if (estado.etapa === "quiz" && resta <= 0) {
-      Array.prototype.forEach.call(document.querySelectorAll(".j-op"), function (x) { x.disabled = true; });
-    }
+    // tempo acabou: redesenha (trava as alternativas e troca o aviso)
+    if (estado.etapa === "quiz") desenha();
   }, 250);
 
   /* ---------- interação: emojis, perguntas e comentários ---------- */
@@ -309,7 +341,8 @@
       if (Date.now() - ultimo < 600) return; // evita metralhadora de emoji
       ultimo = Date.now();
       b.classList.remove("pulou"); void b.offsetWidth; b.classList.add("pulou");
-      J.enfileira("mensagem", { id: eu.id, tipo: "emoji", texto: b.dataset.e });
+      // emoji é efêmero: vai direto, fora da fila, para não atrasar resposta do quiz
+      J.chama("POST", "mensagem", { id: eu.id, tipo: "emoji", texto: b.dataset.e }).catch(function () {});
     });
     Array.prototype.forEach.call(document.querySelectorAll(".j-aba"), function (a) {
       a.addEventListener("click", function () {

@@ -269,7 +269,7 @@
     if (b.dataset.abrir) {
       ev.preventDefault(); // o botão fica dentro do <summary>: não abre/fecha a lista
       var i = Number(b.dataset.abrir);
-      if (i <= e.pergunta && !window.confirm("Abrir de novo a pergunta " + (i + 1) + "? Quem já respondeu não pode mudar a resposta.")) return;
+      if (i <= e.pergunta && !window.confirm("Abrir de novo a pergunta " + (i + 1) + "? O tempo recomeça; quem já respondeu mantém a resposta e pode trocar.")) return;
       return abrirPergunta(i);
     }
     if (b.dataset.msg) {
