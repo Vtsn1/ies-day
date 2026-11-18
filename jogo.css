@@ -367,3 +367,28 @@
   border-radius: 12px;
   padding: 9px 12px;
 }
+
+/* controle rápido do admin */
+.a-comando-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.a-grandes { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-top: 14px; }
+.a-grande {
+  display: grid;
+  gap: 4px;
+  text-align: left;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid var(--borda-forte);
+  background: rgba(58, 70, 255, 0.18);
+  color: var(--texto);
+  font: inherit;
+  cursor: pointer;
+  transition: transform var(--dur-rapida) var(--ease-mola), background var(--dur-rapida) ease, opacity var(--dur-rapida) ease;
+}
+.a-grande b { font-family: var(--fonte-titulo); font-size: 17px; }
+.a-grande span { font-size: 13px; color: var(--texto-2); }
+.a-grande:not(:disabled):hover { transform: translateY(-2px); background: rgba(58, 70, 255, 0.32); }
+.a-grande:disabled { opacity: 0.4; cursor: default; }
+.a-grande.ativo { border-color: var(--ciano); box-shadow: 0 0 0 2px rgba(103, 212, 255, 0.25); }
+.a-grande.destaque-desafio { background: rgba(255, 106, 31, 0.18); border-color: rgba(255, 106, 31, 0.55); }
+.a-grande.destaque-desafio:not(:disabled):hover { background: rgba(255, 106, 31, 0.3); }
+.pg-admin #painel { display: grid; gap: 14px; }

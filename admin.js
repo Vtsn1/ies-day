@@ -5,8 +5,8 @@
   "use strict";
   var J = window.JOGO;
   var $ = function (s) { return document.querySelector(s); };
-  var chave = "";
-  try { chave = sessionStorage.getItem("iesjogo_chave") || ""; } catch (e) {}
+  var chave = "", usuario = "";
+  try { chave = sessionStorage.getItem("iesjogo_chave") || ""; usuario = sessionStorage.getItem("iesjogo_usuario") || ""; } catch (e) {}
   var dados = null;
 
   var tAviso;
@@ -19,7 +19,7 @@
   }
 
   function admin(metodo, corpo) {
-    return J.chama(metodo, "admin", corpo, "", { "x-chave": chave });
+    return J.chama(metodo, "admin", corpo, "", { "x-usuario": usuario, "x-chave": encodeURIComponent(chave) });
   }
   function op(corpo, msg) {
     return admin("POST", corpo).then(function () { if (msg) aviso(msg, "ok"); return carrega(); }, function (e) { aviso(e.message, "erro"); });
@@ -27,14 +27,15 @@
 
   $("#form-login").addEventListener("submit", function (ev) {
     ev.preventDefault();
-    chave = $("#chave").value.trim();
+    usuario = $("#usuario").value.trim().toLowerCase();
+    chave = $("#chave").value;
     carrega(true);
   });
 
   function carrega(doLogin) {
     return admin("GET").then(function (d) {
       dados = d;
-      try { sessionStorage.setItem("iesjogo_chave", chave); } catch (e) {}
+      try { sessionStorage.setItem("iesjogo_chave", chave); sessionStorage.setItem("iesjogo_usuario", usuario); } catch (e) {}
       $("#login").hidden = true;
       $("#painel").hidden = false;
       desenha();
@@ -53,10 +54,34 @@
     return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   }
 
+  function e0() { return dados.estado; }
+
+  // botões grandes: só ficam ativos quando fazem sentido
+  function comandos(e) {
+    var total = dados.perguntas.length;
+    var aberta = e.etapa === "quiz" && e.pergunta >= 0 && !e.revelado;
+    var desafioRolando = e.etapa === "desafio" && e.desafio_fim && e.desafio_fim > e.agora;
+    var txt;
+    if (e.etapa === "interacao") txt = "Mural aberto. Quando for a hora, clique em <b>Iniciar jogo</b>.";
+    else if (e.etapa === "quiz") txt = e.pergunta < 0 ? "Quiz aberto, aguardando a pergunta 1." : "Quiz · pergunta <b>" + (e.pergunta + 1) + " de " + total + "</b> · " + (e.revelado ? "resposta revelada" : "aberta");
+    else if (e.etapa === "desafio") txt = desafioRolando ? "Desafio <b>em andamento</b> até " + hora(e.desafio_fim) : "Desafio <b>encerrado</b>";
+    else txt = "<b>Resultado final</b> no telão";
+    $("#comando-estado").innerHTML = txt + " · " + dados.contagem.participantes + " participante(s)";
+    $("#g-quiz").disabled = false;
+    $("#g-proxima").disabled = !(e.etapa === "quiz" && e.pergunta >= 0 && e.pergunta + 1 < total);
+    $("#g-proxima-txt").textContent = e.pergunta + 1 < total ? "Abre a pergunta " + (e.pergunta + 2) + " de " + total : "Era a última pergunta";
+    $("#g-revelar").disabled = !aberta;
+    $("#g-desafio").disabled = !!desafioRolando;
+    $("#g-quiz").classList.toggle("ativo", e.etapa === "quiz");
+    $("#g-desafio").classList.toggle("ativo", e.etapa === "desafio");
+    $("#g-final").classList.toggle("ativo", e.etapa === "encerrado");
+  }
+
   var NOMES = { interacao: "Interação", quiz: "Quiz", desafio: "Desafio", encerrado: "Resultado final" };
 
   function desenha() {
     var e = dados.estado;
+    comandos(e);
     $("#estado").innerHTML = "Agora: <b>" + NOMES[e.etapa] + "</b> · " + dados.contagem.participantes + " participante(s) · " + dados.contagem.emojis + " reação(ões)";
     Array.prototype.forEach.call(document.querySelectorAll("#etapas button"), function (b) {
       b.classList.toggle("ativo", b.dataset.etapa === e.etapa);
@@ -131,6 +156,17 @@
     if (b.dataset.etapa) return op({ op: "etapa", etapa: b.dataset.etapa }, "Etapa: " + NOMES[b.dataset.etapa]);
     if (b.dataset.abrir) return op({ op: "abrir_pergunta", indice: Number(b.dataset.abrir) }, "Pergunta " + (Number(b.dataset.abrir) + 1) + " aberta");
     if (b.dataset.msg) return op({ op: "moderar", id: Number(b.dataset.msg), status: b.dataset.status }, "Mensagem " + b.dataset.status);
+    if (b.id === "g-quiz") {
+      if (e0().pergunta >= 0 && !window.confirm("O quiz já começou. Voltar para a pergunta 1?")) return;
+      return op({ op: "abrir_pergunta", indice: 0 }, "Jogo iniciado: pergunta 1 aberta");
+    }
+    if (b.id === "g-proxima") return op({ op: "abrir_pergunta", indice: e0().pergunta + 1 }, "Pergunta " + (e0().pergunta + 2) + " aberta");
+    if (b.id === "g-revelar") return op({ op: "revelar" }, "Resposta revelada");
+    if (b.id === "g-desafio") {
+      if (e0().desafio_inicio && !window.confirm("O desafio já foi iniciado. Reiniciar o relógio de 30 minutos?")) return;
+      return op({ op: "iniciar_desafio" }, "Desafio iniciado: 30 minutos");
+    }
+    if (b.id === "g-final") return op({ op: "etapa", etapa: "encerrado" }, "Resultado final no telão");
     if (b.id === "proxima") return op({ op: "abrir_pergunta", indice: dados.estado.pergunta + 1 }, "Pergunta " + (dados.estado.pergunta + 2) + " aberta");
     if (b.id === "revelar") return op({ op: "revelar" }, "Resposta revelada");
     if (b.id === "iniciar-desafio") {
@@ -145,7 +181,7 @@
       return op({ op: "zerar", confirmar: "ZERAR" }, "Jogo zerado");
     }
     if (b.id === "exportar") {
-      fetch("/api/jogo?acao=exportar", { headers: { "x-chave": chave }, cache: "no-store" })
+      fetch("/api/jogo?acao=exportar", { headers: { "x-usuario": usuario, "x-chave": encodeURIComponent(chave) }, cache: "no-store" })
         .then(function (r) { if (!r.ok) throw new Error("Falha ao exportar"); return r.blob(); })
         .then(function (blob) {
           var a = document.createElement("a");
@@ -162,6 +198,11 @@
     op({ op: "auto_comentarios", valor: this.checked }, this.checked ? "Comentários vão direto para o telão" : "Comentários passam pela moderação");
   });
 
-  if (chave) carrega(); else $("#login").hidden = false;
+  $("#sair-admin").addEventListener("click", function () {
+    try { sessionStorage.removeItem("iesjogo_chave"); sessionStorage.removeItem("iesjogo_usuario"); } catch (e) {}
+    location.reload();
+  });
+
+  if (chave && usuario) carrega(); else $("#login").hidden = false;
   setInterval(function () { if (!$("#painel").hidden) carrega(); }, 3000);
 })();

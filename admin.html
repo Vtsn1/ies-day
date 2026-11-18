@@ -25,17 +25,36 @@
   </header>
 
   <main class="j-main">
-    <section class="j-cartao" id="login">
-      <h1 class="j-titulo">Painel da organização</h1>
-      <p class="j-sub">Digite a chave definida na variável ADMIN_KEY da Vercel.</p>
-      <form id="form-login">
-        <label class="j-campo"><span>Chave</span><input id="chave" type="password" autocomplete="current-password"></label>
-        <p class="j-erro" id="erro-login"></p>
-        <button class="botao primario" type="submit">Entrar</button>
+    <section class="j-cartao" id="login" hidden style="max-width:420px;width:100%;justify-self:center">
+      <p class="secao-rotulo">Organização</p>
+      <h1 class="j-titulo">Painel do admin</h1>
+      <p class="j-sub">Entre para iniciar o jogo, o desafio e moderar as perguntas.</p>
+      <form id="form-login" novalidate>
+        <label class="j-campo"><span>Usuário</span><input id="usuario" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="admin"></label>
+        <label class="j-campo"><span>Senha</span><input id="chave" type="password" autocomplete="current-password"></label>
+        <p class="j-erro" id="erro-login" role="alert"></p>
+        <button class="botao primario j-largo" type="submit">Entrar</button>
       </form>
     </section>
 
     <section id="painel" hidden>
+      <div class="j-cartao a-comando">
+        <div class="a-comando-topo">
+          <div>
+            <p class="secao-rotulo">Controle do jogo</p>
+            <p class="a-estado" id="comando-estado"></p>
+          </div>
+          <button class="botao secundario pequeno" id="sair-admin" type="button">Sair</button>
+        </div>
+        <div class="a-grandes">
+          <button class="a-grande" id="g-quiz" type="button"><b>▶ Iniciar jogo</b><span>Abre o Quiz com a pergunta 1</span></button>
+          <button class="a-grande" id="g-proxima" type="button"><b>⏭ Próxima pergunta</b><span id="g-proxima-txt"></span></button>
+          <button class="a-grande" id="g-revelar" type="button"><b>✔ Revelar resposta</b><span>Mostra a certa e o ranking</span></button>
+          <button class="a-grande destaque-desafio" id="g-desafio" type="button"><b>▶ Iniciar desafio</b><span>Etapa 2 · 30 minutos</span></button>
+          <button class="a-grande" id="g-final" type="button"><b>🏆 Mostrar resultado</b><span>Pódio no telão</span></button>
+        </div>
+      </div>
+
       <div class="a-grade">
         <div class="j-cartao">
           <p class="secao-rotulo">Etapa atual</p>

@@ -543,9 +543,14 @@ async function desafio(s, req, res) {
   res.status(200).json({ ok: true });
 }
 
+// Login do painel: usuário "admin". A senha pode ser trocada pela variável ADMIN_KEY na Vercel.
+const ADMIN_USUARIO = "admin";
+const ADMIN_SENHAS = ["#iesday2026", process.env.ADMIN_KEY].filter(Boolean);
 function autorizado(req) {
-  const chave = process.env.ADMIN_KEY;
-  return !!chave && req.headers["x-chave"] === chave;
+  const usuario = String(req.headers["x-usuario"] || "").trim().toLowerCase();
+  let senha = String(req.headers["x-chave"] || "");
+  try { senha = decodeURIComponent(senha); } catch (e) {}
+  return usuario === ADMIN_USUARIO && ADMIN_SENHAS.indexOf(senha) >= 0;
 }
 
 async function adminDados(s, res) {
@@ -645,13 +650,12 @@ module.exports = async function handler(req, res) {
       if (acao === "saude") {
         const r = await s`SELECT COUNT(*)::int AS n FROM jogo_participantes`;
         res.setHeader("Cache-Control", "no-store");
-        return res.status(200).json({ ok: true, banco: "conectado", participantes: r[0].n, adminConfigurado: !!process.env.ADMIN_KEY });
+        return res.status(200).json({ ok: true, banco: "conectado", participantes: r[0].n, adminConfigurado: true });
       }
       if (acao === "estado") return await estado(s, res);
       if (acao === "meu") return await meu(s, req, res);
       if (acao === "admin" || acao === "exportar") {
-        if (!process.env.ADMIN_KEY) return erro(res, 500, "Configure a variável ADMIN_KEY na Vercel.");
-        if (!autorizado(req)) return erro(res, 401, "Chave de organizador incorreta.");
+        if (!autorizado(req)) return erro(res, 401, "Usuário ou senha incorretos.");
         return acao === "admin" ? await adminDados(s, res) : await exportar(s, res);
       }
     } else if (req.method === "POST") {
@@ -660,8 +664,7 @@ module.exports = async function handler(req, res) {
       if (acao === "responder") return await responder(s, req, res);
       if (acao === "desafio") return await desafio(s, req, res);
       if (acao === "admin") {
-        if (!process.env.ADMIN_KEY) return erro(res, 500, "Configure a variável ADMIN_KEY na Vercel.");
-        if (!autorizado(req)) return erro(res, 401, "Chave de organizador incorreta.");
+        if (!autorizado(req)) return erro(res, 401, "Usuário ou senha incorretos.");
         return await adminAcao(s, req, res);
       }
     }

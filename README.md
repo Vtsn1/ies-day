@@ -85,7 +85,7 @@ Três páginas novas, todas no mesmo site:
 |---|---|---|
 | `/jogo` | público, pelo celular (QR code) | entrada com nome e matrícula (ou visitante), ID próprio, emojis, comentários, perguntas, quiz e desafio |
 | `/telao` | projetor | QR code, emojis voando, mural moderado, perguntas do quiz com cronômetro, ranking e pódio. Tecla F = tela cheia |
-| `/admin` | organização | troca de etapa, abre e revela perguntas, controla o desafio, modera mensagens, baixa a planilha |
+| `/admin` | organização (usuário `admin`) | botões grandes Iniciar jogo, Próxima pergunta, Revelar, Iniciar desafio e Mostrar resultado; troca de etapa, abre e revela perguntas, controla o desafio, modera mensagens, baixa a planilha |
 
 Arquivos do jogo: `jogo.html`, `jogo.js`, `telao.html`, `telao.js`, `admin.html`, `admin.js`, `jogo-comum.js`, `jogo.css`, `qrcode.js`,
 `api/jogo.js` (a API inteira, num arquivo só, dentro da pasta `api`) e `package.json`.
@@ -95,10 +95,10 @@ Arquivos do jogo: `jogo.html`, `jogo.js`, `telao.html`, `telao.js`, `admin.html`
 1. No Supabase: botão **Connect** (no topo do projeto) → **Transaction pooler** (porta 6543). Copie a URI e troque `[YOUR-PASSWORD]` pela senha do banco. Não use a "Direct connection" (`db.xxx.supabase.co:5432`): ela só funciona por IPv6 e a Vercel não alcança. Senha com `?`, `#` ou `@` pode ser colada como está.
 2. Na Vercel: **Project → Settings → Environment Variables** e crie:
    - `DATABASE_URL` = a URI do passo 1
-   - `ADMIN_KEY` = uma senha para o painel da organização
+   - `ADMIN_KEY` (opcional) = uma senha extra para o painel. Sem ela, o login é usuário `admin` e senha `#iesday2026`.
 3. Faça um novo deploy (Deployments → Redeploy). As tabelas são criadas sozinhas no primeiro acesso.
 4. Teste: abra `/api/jogo?acao=saude`. Tem que aparecer `"banco":"conectado"`.
-5. Abra `/admin`, entre com a `ADMIN_KEY`, faça um teste com o celular e depois use **Zerar tudo** antes do evento.
+5. Abra `/admin`, entre com usuário `admin` e senha `#iesday2026`, faça um teste com o celular e depois use **Zerar tudo** antes do evento.
 
 A chave "publishable" do Supabase não é usada: o site fala com o banco só pelo servidor, e as tabelas ficam com RLS ligado para ninguém mexer nelas direto pela API pública.
 
