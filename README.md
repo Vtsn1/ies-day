@@ -88,7 +88,7 @@ Três páginas novas, todas no mesmo site:
 | `/admin` | organização | troca de etapa, abre e revela perguntas, controla o desafio, modera mensagens, baixa a planilha |
 
 Arquivos do jogo: `jogo.html`, `jogo.js`, `telao.html`, `telao.js`, `admin.html`, `admin.js`, `jogo-comum.js`, `jogo.css`, `qrcode.js`,
-`api/jogo.js`, `api/_db.js`, `api/_conteudo.js` e `package.json`.
+`api/jogo.js` (a API inteira, num arquivo só, dentro da pasta `api`) e `package.json`.
 
 ### Configurar na Vercel (uma vez)
 
@@ -107,7 +107,9 @@ A chave "publishable" do Supabase não é usada: o site fala com o banco só pel
 - **Etapa 1 · Quiz (10 perguntas, 30 s cada):** só pontua quem acerta. Acerto vale de 500 a 1000 pontos: 1000 se responder na hora e cai até 500 no fim dos 30 s. Erro ou sem resposta vale 0. Vale a primeira resposta.
 - **Empate:** mais acertos na frente; persistindo, quem somou menos tempo nas respostas certas.
 - **Etapa 2 · Desafio (30 min):** erro de até 2% vale 2000, até 10% vale 1000, mais um bônus de até 500 por enviar cedo. Pode reenviar; vale o último envio. Os pontos do desafio só entram no ranking quando ele termina.
-- Perguntas, gabarito e o desafio ficam em `api/_conteudo.js` (só no servidor).
+- Perguntas, gabarito e o desafio ficam no começo de `api/jogo.js` (só no servidor).
+- Comentários vão direto para o telão (dá para desligar no `/admin`); perguntas sempre passam pela seleção da organização.
+- A home do site tem o painel **Ao vivo** com pessoas no jogo, reações, mural e ranking; ele só aparece quando a API está funcionando.
 
 ### Backup no celular
 
