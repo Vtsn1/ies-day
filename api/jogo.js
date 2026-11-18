@@ -670,6 +670,17 @@ async function adminAcao(s, req, res) {
     const status = texto(b.status, 20);
     if (STATUS.indexOf(status) < 0) return erro(res, 400, "Status inválido.");
     await s`UPDATE jogo_mensagens SET status = ${status} WHERE id = ${Number(b.id)}`;
+  } else if (op === "destravar") {
+    // Sessões presas no banco: esperando lock nas tabelas do jogo, ou transação parada há mais de 1 min
+    // (ela segura a tabela e trava a fila). Sem confirmar, só lista; com confirmar, encerra essas sessões.
+    const presas = await s`SELECT pid, state, wait_event_type, left(query, 100) AS query,
+        round(extract(epoch FROM now() - coalesce(xact_start, query_start)))::int AS segundos,
+        (CASE WHEN ${b.confirmar === "DESTRAVAR"} THEN pg_terminate_backend(pid) ELSE FALSE END) AS encerrada
+      FROM pg_stat_activity
+      WHERE datname = current_database() AND pid <> pg_backend_pid() AND (
+        (wait_event_type = 'Lock' AND query ILIKE '%jogo\\_%')
+        OR (state LIKE 'idle in transaction%' AND now() - state_change > interval '1 minute'))`;
+    return res.status(200).json({ ok: true, presas });
   } else if (op === "zerar") {
     if (b.confirmar !== "ZERAR") return erro(res, 400, "Digite ZERAR para confirmar.");
     await s`DELETE FROM jogo_respostas_desafio`;
