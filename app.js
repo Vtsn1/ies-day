@@ -382,6 +382,7 @@
     var secao = document.getElementById("ao-vivo");
     if (!secao) return;
     var vistos = {};
+    var conectou = false;
     var ETAPAS = { interacao: "Mural do público", quiz: "Quiz Sem Fronteiras", desafio: "Desafio Sem Fronteiras", encerrado: "Resultado final" };
     function lista(r) {
       return '<ol class="vivo-rank">' + r.slice(0, 5).map(function (x, i) {
@@ -429,8 +430,12 @@
     function consulta() {
       fetch("/api/jogo?acao=estado", { cache: "no-store" })
         .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
-        .then(function (d) { if (d && d.ok) desenha(d); })
-        .catch(function () {})
+        .then(function (d) { if (d && d.ok) { conectou = true; desenha(d); } })
+        .catch(function () {
+          // sem API (antes do evento ou fora do ar): a seção continua com os botões de entrada
+          if (!conectou) document.getElementById("vivo-conteudo").innerHTML =
+            '<p class="vivo-vazio">As reações, as perguntas e o ranking aparecem aqui durante o evento. Entre no jogo pelo botão acima.</p>';
+        })
         .then(function () { setTimeout(consulta, document.hidden ? 12000 : 4000); });
     }
     consulta();

@@ -143,6 +143,9 @@
     catch (e) { return "R$ " + v; }
   }
 
+  // tempo que falta até "fim"; com o jogo pausado, o relógio fica parado no instante da pausa
+  function restante(fim, pausado) { return Math.max(0, fim - (pausado || agora())); }
+
   function relogio(ms) {
     ms = Math.max(0, ms);
     var s = Math.ceil(ms / 1000);
@@ -167,6 +170,7 @@
     numero: numero,
     reais: reais,
     relogio: relogio,
+    restante: restante,
     EMOJIS: ["👏", "🔥", "⚡", "💡", "😂", "❤️", "🚀", "🤯"],
     LETRAS: ["A", "B", "C", "D"],
   };

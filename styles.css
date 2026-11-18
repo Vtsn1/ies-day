@@ -1125,3 +1125,5 @@ body::before {
 .vivo-rank li:first-child { border-color: #ffb547; }
 @keyframes vivo-pula { from { transform: translateY(14px) scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
 @media (max-width: 860px) { .vivo-grade { grid-template-columns: 1fr; } .vivo-numeros { grid-template-columns: repeat(3, 1fr); } .vivo-emojis { grid-column: 1 / -1; } .vivo-numeros strong { font-size: 30px; } }
+@media (max-width: 560px) { .vivo-acoes { width: 100%; } .vivo-acoes .botao { flex: 1 1 auto; } }
+.vivo-emojis:empty { display: none; }

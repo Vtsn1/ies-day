@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Organização · Jogo IES DAY</title>
+  <title>Admin · Jogo IES DAY</title>
   <meta name="robots" content="noindex">
   <meta name="theme-color" content="#030824">
   <link rel="icon" href="logo-ies.png" type="image/png">
@@ -17,18 +17,19 @@
   <header class="j-topo">
     <a class="marca" href="/" aria-label="Site do IES DAY">
       <img class="marca-logo" src="logo-ies.png" alt="" width="40" height="40">
-      <span><b>IES</b> DAY · Organização</span>
+      <span><b>IES</b> DAY</span>
     </a>
-    <div class="a-botoes" style="margin:0">
+    <div class="a-topo-botoes">
       <a class="botao secundario pequeno" href="/telao" target="_blank" rel="noopener">Abrir telão</a>
+      <button class="botao secundario pequeno" id="sair-admin" type="button" hidden>Sair</button>
     </div>
   </header>
 
   <main class="j-main">
-    <section class="j-cartao" id="login" hidden style="max-width:420px;width:100%;justify-self:center">
+    <section class="j-cartao a-login" id="login" hidden>
       <p class="secao-rotulo">Organização</p>
       <h1 class="j-titulo">Painel do admin</h1>
-      <p class="j-sub">Entre para iniciar o jogo, o desafio e moderar as perguntas.</p>
+      <p class="j-sub">Entre para controlar o quiz, o desafio e moderar as perguntas do público.</p>
       <form id="form-login" novalidate>
         <label class="j-campo"><span>Usuário</span><input id="usuario" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="admin"></label>
         <label class="j-campo"><span>Senha</span><input id="chave" type="password" autocomplete="current-password"></label>
@@ -38,86 +39,89 @@
     </section>
 
     <section id="painel" hidden>
-      <div class="j-cartao a-comando">
-        <div class="a-comando-topo">
+      <div class="a-controle">
+        <div class="a-status">
           <div>
-            <p class="secao-rotulo">Controle do jogo</p>
-            <p class="a-estado" id="comando-estado"></p>
+            <span class="a-etapa" id="c-etapa"></span>
+            <p id="c-estado"></p>
           </div>
-          <button class="botao secundario pequeno" id="sair-admin" type="button">Sair</button>
+          <div class="a-relogio" id="c-relogio" aria-label="Tempo restante"></div>
         </div>
         <div class="a-grandes">
-          <button class="a-grande" id="g-quiz" type="button"><b>▶ Iniciar jogo</b><span>Abre o Quiz com a pergunta 1</span></button>
-          <button class="a-grande" id="g-proxima" type="button"><b>⏭ Próxima pergunta</b><span id="g-proxima-txt"></span></button>
-          <button class="a-grande" id="g-revelar" type="button"><b>✔ Revelar resposta</b><span>Mostra a certa e o ranking</span></button>
-          <button class="a-grande destaque-desafio" id="g-desafio" type="button"><b>▶ Iniciar desafio</b><span>Etapa 2 · 30 minutos</span></button>
-          <button class="a-grande" id="g-final" type="button"><b>🏆 Mostrar resultado</b><span>Pódio no telão</span></button>
+          <button class="a-grande verde" id="g-iniciar" type="button"><b>▶ Iniciar jogo</b><span>Abre a pergunta 1 do quiz</span></button>
+          <button class="a-grande" id="g-pausar" type="button"><b id="g-pausar-b">⏸ Pausar</b><span id="g-pausar-txt">Congela o relógio</span></button>
+          <button class="a-grande" id="g-revelar" type="button"><b>✔ Mostrar resposta</b><span>Da pergunta atual, com o top 3</span></button>
+          <button class="a-grande" id="g-proxima" type="button"><b id="g-proxima-b">⏭ Próxima pergunta</b><span id="g-proxima-txt"></span></button>
         </div>
       </div>
 
-      <div class="a-grade">
-        <div class="j-cartao">
-          <p class="secao-rotulo">Etapa atual</p>
-          <p class="a-estado" id="estado"></p>
-          <div class="a-botoes" id="etapas">
-            <button class="botao secundario" data-etapa="interacao">1 · Interação</button>
-            <button class="botao secundario" data-etapa="quiz">2 · Quiz</button>
-            <button class="botao secundario" data-etapa="desafio">3 · Desafio</button>
-            <button class="botao secundario" data-etapa="encerrado">Resultado final</button>
+      <div class="a-colunas">
+        <div class="a-col">
+          <div class="j-cartao">
+            <p class="secao-rotulo">Pergunta no telão</p>
+            <div id="atual"></div>
           </div>
-          <p class="j-nota">O telão e os celulares mudam sozinhos em até 3 segundos.</p>
-        </div>
-
-        <div class="j-cartao">
-          <p class="secao-rotulo">Quiz Sem Fronteiras</p>
-          <p class="a-estado" id="quiz-estado"></p>
-          <div class="a-botoes">
-            <button class="botao primario" id="proxima">Abrir próxima pergunta</button>
-            <button class="botao secundario" id="revelar">Revelar resposta</button>
-          </div>
-          <div class="a-perguntas" id="perguntas"></div>
-        </div>
-
-        <div class="j-cartao">
-          <p class="secao-rotulo">Desafio Sem Fronteiras (etapa 2)</p>
-          <p class="a-estado" id="desafio-estado"></p>
-          <div class="a-botoes">
-            <button class="botao primario" id="iniciar-desafio">Iniciar desafio (30 min)</button>
-            <button class="botao secundario" id="mais-tempo">+5 minutos</button>
-            <button class="botao secundario" id="encerrar-desafio">Encerrar agora</button>
+          <div class="j-cartao">
+            <p class="secao-rotulo">Perguntas do quiz</p>
+            <div class="a-perguntas" id="perguntas"></div>
           </div>
         </div>
 
-        <div class="j-cartao">
-          <p class="secao-rotulo">Moderação · <span id="n-pendentes">0</span> esperando</p>
-          <label class="j-check" style="margin:4px 0 10px"><input type="checkbox" id="auto-comentarios"><span>Comentários vão direto para o telão (perguntas continuam passando por aqui)</span></label>
-          <div class="a-rolagem" id="pendentes"></div>
-          <details style="margin-top:12px">
-            <summary style="cursor:pointer;color:var(--texto-2)">Já moderadas</summary>
-            <div class="a-rolagem" id="recentes"></div>
-          </details>
-        </div>
-
-        <div class="j-cartao" style="grid-column:1/-1">
-          <p class="secao-rotulo">Respostas do desafio</p>
-          <div class="a-rolagem"><table class="a-tabela" id="tabela-desafio"></table></div>
-        </div>
-
-        <div class="j-cartao" style="grid-column:1/-1">
-          <p class="secao-rotulo">Ranking geral</p>
-          <div class="a-botoes">
-            <button class="botao secundario" id="exportar">Baixar planilha (CSV)</button>
+        <div class="a-col">
+          <div class="j-cartao">
+            <p class="secao-rotulo">Perguntas do público</p>
+            <div class="a-filtros" role="tablist" id="filtros">
+              <button type="button" class="a-filtro" data-filtro="pendente" aria-selected="true">Esperando <em id="n-pendente">0</em></button>
+              <button type="button" class="a-filtro" data-filtro="telao" aria-selected="false">No telão <em id="n-telao">0</em></button>
+              <button type="button" class="a-filtro" data-filtro="rejeitada" aria-selected="false">Recusadas <em id="n-rejeitada">0</em></button>
+            </div>
+            <div class="a-rolagem" id="mensagens"></div>
+            <label class="j-check"><input type="checkbox" id="auto-comentarios"><span>Comentários vão direto para o telão (perguntas sempre passam por aqui)</span></label>
           </div>
-          <div class="a-rolagem"><table class="a-tabela" id="tabela-ranking"></table></div>
-        </div>
 
-        <div class="j-cartao" style="grid-column:1/-1">
-          <p class="secao-rotulo">Zerar o jogo</p>
-          <p class="j-sub">Apaga participantes, mensagens e respostas. Use só para limpar os testes antes do evento.</p>
-          <div class="a-botoes">
-            <input id="confirma-zerar" placeholder="Digite ZERAR" style="max-width:180px" class="j-campo-inline">
-            <button class="botao secundario" id="zerar">Zerar tudo</button>
+          <div class="j-cartao">
+            <p class="secao-rotulo">Etapas</p>
+            <p class="a-estado" id="estado"></p>
+            <div class="a-botoes" id="etapas">
+              <button class="botao secundario" data-etapa="interacao">Mural</button>
+              <button class="botao secundario" data-etapa="quiz">Quiz</button>
+              <button class="botao secundario" data-etapa="desafio">Desafio</button>
+              <button class="botao secundario" data-etapa="encerrado">Resultado final</button>
+            </div>
+            <p class="j-nota">Troca só a tela do telão e dos celulares, sem mexer nos relógios.</p>
           </div>
+
+          <div class="j-cartao">
+            <p class="secao-rotulo">Desafio Sem Fronteiras</p>
+            <p class="a-estado" id="desafio-estado"></p>
+            <div class="a-botoes">
+              <button class="botao primario" id="iniciar-desafio">Iniciar desafio</button>
+              <button class="botao secundario" id="mais-tempo">+5 minutos</button>
+              <button class="botao secundario" id="encerrar-desafio">Encerrar agora</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="j-cartao">
+        <p class="secao-rotulo">Respostas do desafio</p>
+        <div class="a-tabela-caixa"><table class="a-tabela" id="tabela-desafio"></table></div>
+      </div>
+
+      <div class="j-cartao">
+        <p class="secao-rotulo">Ranking geral</p>
+        <div class="a-botoes">
+          <button class="botao secundario" id="exportar">Baixar planilha (CSV)</button>
+        </div>
+        <div class="a-tabela-caixa"><table class="a-tabela" id="tabela-ranking"></table></div>
+      </div>
+
+      <div class="j-cartao">
+        <p class="secao-rotulo">Zerar o jogo</p>
+        <p class="j-sub">Apaga participantes, mensagens e respostas. Use só para limpar os testes antes do evento.</p>
+        <div class="a-botoes">
+          <input id="confirma-zerar" placeholder="Digite ZERAR" class="j-campo-inline" autocomplete="off" aria-label="Digite ZERAR para confirmar">
+          <button class="botao secundario" id="zerar">Zerar tudo</button>
         </div>
       </div>
     </section>

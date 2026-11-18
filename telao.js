@@ -28,24 +28,27 @@
   $("#tela-cheia").addEventListener("click", telaCheia);
   document.addEventListener("keydown", function (e) { if (e.key === "f" || e.key === "F") telaCheia(); });
 
-  /* emojis subindo pela tela */
+  /* emojis subindo pelo fundo do telão, por trás dos cartões */
   function soltaEmoji(e) {
+    var ceu = $("#ceu-emojis");
+    if (ceu.childElementCount > 80) return; // chuva de reações: não pesa no projetor
     var el = document.createElement("span");
+    var dur = 5 + Math.random() * 3;
     el.className = "t-voo";
-    el.textContent = e;
-    el.style.left = 28 + Math.random() * 68 + "vw";
-    el.style.setProperty("--dx", (Math.random() * 16 - 8).toFixed(1) + "vw");
-    el.style.setProperty("--rot", (Math.random() * 60 - 30).toFixed(0) + "deg");
-    el.style.setProperty("--dur", (3.2 + Math.random() * 2).toFixed(2) + "s");
-    el.style.fontSize = (2.6 + Math.random() * 2) + "vw";
-    $("#ceu-emojis").appendChild(el);
-    setTimeout(function () { el.remove(); }, 5600);
+    el.innerHTML = "<i>" + J.esc(e) + "</i>";
+    el.style.left = (2 + Math.random() * 92).toFixed(1) + "%";
+    el.style.fontSize = "calc(" + (2.8 + Math.random() * 2.4).toFixed(2) + " * var(--u))";
+    el.style.setProperty("--dur", dur.toFixed(2) + "s");
+    el.style.setProperty("--dx", (0.8 + Math.random() * 2.2).toFixed(1) + "vw");
+    el.style.setProperty("--balanco", (1.2 + Math.random() * 1.2).toFixed(2) + "s");
+    ceu.appendChild(el);
+    setTimeout(function () { el.remove(); }, dur * 1000 + 200);
   }
   function novosEmojis(lista) {
     var novos = lista.filter(function (m) { return !emojisVistos[m.id]; });
     novos.reverse().forEach(function (m, i) {
       emojisVistos[m.id] = 1;
-      setTimeout(function () { soltaEmoji(m.texto); }, i * 140); // espalha no tempo
+      setTimeout(function () { soltaEmoji(m.texto); }, i * 180); // espalha no tempo
     });
   }
 
@@ -93,14 +96,14 @@
         (q.revelado ? '<span class="t-pct">' + pct + "%</span>" : "") + "</div>";
     }).join("");
     return (
-      '<div class="t-quiz-cab"><div><p class="t-rotulo">Quiz Sem Fronteiras · Pergunta ' + (q.indice + 1) + " de " + q.total + "</p>" +
+      '<div class="t-quiz-cab"><div><p class="t-rotulo">Pergunta ' + (q.indice + 1) + " de " + q.total + "</p>" +
       '<p class="t-info">' + J.esc(q.pergunta.tema) + "</p></div>" +
-      '<div style="text-align:right"><div class="t-tempo" id="tempo"></div><p class="t-info" id="respondidos">' + tot + " resposta(s)</p></div></div>" +
+      '<div><div class="t-tempo" id="tempo"></div><p class="t-info" id="respondidos">' + tot + " resposta(s)</p></div></div>" +
       '<div class="t-barra"><i id="barra"></i></div>' +
       '<p class="t-enunciado' + (q.revelado ? " compacto" : "") + '">' + J.esc(q.pergunta.texto) + "</p>" +
       '<div class="t-ops' + (q.revelado ? " revelado" : "") + '">' + ops + "</div>" +
       (q.revelado
-        ? '<div class="t-duas" style="margin-top:1.2vw"><div class="t-just"><b>Resposta ' + q.pergunta.correta + ".</b> " + J.esc(q.pergunta.justificativa) + "</div>" +
+        ? '<div class="t-duas t-revela"><div class="t-just"><b>Resposta ' + q.pergunta.correta + ".</b> " + J.esc(q.pergunta.justificativa) + "</div>" +
           "<div>" + ranking(3) + "</div></div>"
         : "")
     );
@@ -111,15 +114,15 @@
     if (!d) return '<h1 class="t-titulo">O desafio já vai começar</h1>';
     return (
       '<p class="t-rotulo">Etapa 2 · Desafio Sem Fronteiras</p>' +
-      '<h1 class="t-titulo">' + J.esc(d.titulo) + "</h1>" +
+      '<h1 class="t-titulo t-desafio-titulo">' + J.esc(d.titulo) + "</h1>" +
       '<div class="t-duas"><div class="t-desafio">' +
       d.enunciado.map(function (p) { return "<p>" + J.esc(p) + "</p>"; }).join("") +
       "<ul>" + d.itens.map(function (i) { return "<li>" + J.esc(i) + "</li>"; }).join("") + "</ul></div>" +
-      '<div style="text-align:center;align-self:center">' +
+      '<div class="t-desafio-lado">' +
       (d.terminou
-        ? '<p class="t-rotulo">Tempo esgotado</p><p class="t-info" style="margin:1vw 0">Valor de referência</p><p class="t-grande" style="font-size:4vw">' + J.reais(d.referencia) + "</p>"
+        ? '<p class="t-rotulo">Tempo esgotado</p><p class="t-info">Valor de referência</p><p class="t-grande t-referencia">' + J.reais(d.referencia) + "</p>"
         : '<p class="t-rotulo">Tempo restante</p><p class="t-grande" id="tempo"></p><div class="t-barra"><i id="barra"></i></div>') +
-      '<p class="t-info" style="margin-top:1vw"><b id="enviados">' + d.enviados + "</b> resposta(s) enviada(s)</p>" +
+      '<p class="t-info"><b id="enviados">' + d.enviados + "</b> resposta(s) enviada(s)</p>" +
       "</div></div>"
     );
   }
@@ -131,10 +134,11 @@
     return (
       '<p class="t-rotulo">Resultado final</p>' +
       '<h1 class="t-titulo">Quiz <em>Sem Fronteiras</em></h1>' +
-      '<div class="t-podio">' + p.map(function (x, i) {
-        return "<div><strong>" + pos[i] + "</strong><span>" + (x ? J.esc(x.nome) : "·") + "</span><small>" + (x ? x.pontos + " pontos" : "") + "</small></div>";
+      '<div class="t-fim"><div class="t-podio">' + p.map(function (x, i) {
+        return '<div class="t-degrau"><span>' + (x ? J.esc(x.nome) : "&nbsp;") + "</span><small>" + (x ? x.pontos + " pontos" : "&nbsp;") + "</small>" +
+          '<div class="t-bloco"><strong>' + pos[i] + "</strong></div></div>";
       }).join("") + "</div>" +
-      ranking(10)
+      ranking(8) + "</div>"
     );
   }
 
@@ -142,7 +146,7 @@
     var q = d.quiz || {}, de = d.desafio || {};
     var m = (d.mural || []).map(function (x) { return x.id + x.status; }).join(",");
     var r = (d.ranking || []).map(function (x) { return x.codigo + x.pontos; }).join(",");
-    return [d.etapa, q.indice, q.revelado, de.inicio, de.terminou, m, d.etapa === "encerrado" || q.revelado ? r : ""].join("|");
+    return [d.etapa, q.indice, q.revelado, de.inicio, de.terminou, !!d.pausado, m, d.etapa === "encerrado" || q.revelado ? r : ""].join("|");
   }
 
   function desenha() {
@@ -151,6 +155,8 @@
       chave = k;
       var e = estado.etapa;
       $("#centro").innerHTML = e === "quiz" ? telaQuiz() : e === "desafio" ? telaDesafio() : e === "encerrado" ? telaFim() : telaInteracao();
+      var tempo = $("#tempo");
+      if (estado.pausado && tempo) tempo.insertAdjacentHTML("afterend", '<p class="t-pausa">⏸ Pausado</p>');
     }
     // números que mudam sem redesenhar a tela
     $("#participantes").textContent = estado.participantes;
@@ -167,14 +173,14 @@
     var resta, total;
     if (estado.etapa === "quiz" && estado.quiz) {
       total = estado.quiz.limite * 1000;
-      resta = estado.quiz.revelado ? 0 : estado.quiz.inicio + total - J.agora();
+      resta = estado.quiz.revelado ? 0 : J.restante(estado.quiz.inicio + total, estado.pausado);
     } else if (estado.etapa === "desafio" && estado.desafio) {
       total = estado.desafio.fim - estado.desafio.inicio;
-      resta = estado.desafio.fim - J.agora();
+      resta = J.restante(estado.desafio.fim, estado.pausado);
     } else return;
-    resta = Math.max(0, resta);
-    t.textContent = resta > 0 ? J.relogio(resta) : "00:00";
-    t.classList.toggle("urgente", resta > 0 && resta < Math.min(10000, total * 0.2));
+    t.textContent = J.relogio(resta);
+    t.classList.toggle("pausado", !!estado.pausado);
+    t.classList.toggle("urgente", !estado.pausado && resta > 0 && resta < Math.min(10000, total * 0.2));
     if (b) b.style.transform = "scaleX(" + (total ? resta / total : 0) + ")";
   }, 250);
 

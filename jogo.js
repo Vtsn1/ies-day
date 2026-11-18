@@ -132,7 +132,7 @@
     var q = d.quiz || {};
     var r = minhasRespostas();
     var de = d.desafio || {};
-    return [d.etapa, q.indice, q.revelado, r[q.indice] || "", de.inicio, de.terminou, meusDados ? meusDados.total : ""].join("|");
+    return [d.etapa, q.indice, q.revelado, r[q.indice] || "", de.inicio, de.terminou, !!d.pausado, meusDados ? meusDados.total : ""].join("|");
   }
 
   function desenha() {
@@ -174,7 +174,7 @@
       if (minha === l) cls += " escolhida";
       if (q.revelado && q.pergunta.correta === l) cls += " certa";
       else if (q.revelado && minha === l) cls += " errada";
-      var dis = minha || q.revelado ? " disabled" : "";
+      var dis = minha || q.revelado || estado.pausado ? " disabled" : "";
       return '<button type="button" class="' + cls + '" data-op="' + l + '"' + dis + "><b>" + l + "</b><span>" + J.esc(q.pergunta.opcoes[l]) + "</span></button>";
     }).join("");
     var rodape = "";
@@ -187,6 +187,8 @@
         "<p>Resposta certa: <b>" + q.pergunta.correta + "</b>. " + J.esc(q.pergunta.justificativa) + "</p></div>";
     } else if (minha) {
       rodape = '<p class="j-dica">Resposta <b>' + minha + "</b> registrada. Aguarde o resultado no telão.</p>";
+    } else if (estado.pausado) {
+      rodape = '<p class="j-dica">Jogo pausado. As alternativas voltam assim que a organização continuar.</p>';
     } else {
       rodape = '<p class="j-dica">Quanto mais rápido acertar, mais pontos.</p>';
     }
@@ -275,14 +277,15 @@
     var resta, total;
     if (estado.etapa === "quiz" && estado.quiz) {
       total = estado.quiz.limite * 1000;
-      resta = estado.quiz.revelado ? 0 : estado.quiz.inicio + total - J.agora();
+      resta = estado.quiz.revelado ? 0 : J.restante(estado.quiz.inicio + total, estado.pausado);
     } else if (estado.etapa === "desafio" && estado.desafio) {
       total = estado.desafio.fim - estado.desafio.inicio;
-      resta = estado.desafio.fim - J.agora();
+      resta = J.restante(estado.desafio.fim, estado.pausado);
     } else return;
-    resta = Math.max(0, resta);
-    t.textContent = resta > 0 ? J.relogio(resta) : "tempo esgotado";
-    t.classList.toggle("urgente", resta > 0 && resta < Math.min(10000, total * 0.2));
+    var revelada = estado.etapa === "quiz" && estado.quiz.revelado;
+    t.textContent = revelada ? "encerrada" : estado.pausado ? "⏸ " + J.relogio(resta) : resta > 0 ? J.relogio(resta) : "tempo esgotado";
+    t.classList.toggle("pausado", !!estado.pausado);
+    t.classList.toggle("urgente", !estado.pausado && resta > 0 && resta < Math.min(10000, total * 0.2));
     if (b) b.style.transform = "scaleX(" + (total ? resta / total : 0) + ")";
     // trava as alternativas quando o tempo acaba
     if (estado.etapa === "quiz" && resta <= 0) {

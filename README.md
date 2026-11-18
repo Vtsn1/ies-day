@@ -85,7 +85,7 @@ Três páginas novas, todas no mesmo site:
 |---|---|---|
 | `/jogo` | público, pelo celular (QR code) | entrada com nome e matrícula (ou visitante), ID próprio, emojis, comentários, perguntas, quiz e desafio |
 | `/telao` | projetor | QR code, emojis voando, mural moderado, perguntas do quiz com cronômetro, ranking e pódio. Tecla F = tela cheia |
-| `/admin` | organização (usuário `admin`) | botões grandes Iniciar jogo, Próxima pergunta, Revelar, Iniciar desafio e Mostrar resultado; troca de etapa, abre e revela perguntas, controla o desafio, modera mensagens, baixa a planilha |
+| `/admin` | organização (usuário `admin`) | barra fixa com Iniciar jogo, Pausar/Continuar, Mostrar resposta e Próxima (que segue para o desafio e o resultado); pergunta atual com gabarito e votos ao vivo, lista das 10 perguntas, moderação das perguntas do público, desafio, ranking e planilha |
 
 Arquivos do jogo: `jogo.html`, `jogo.js`, `telao.html`, `telao.js`, `admin.html`, `admin.js`, `jogo-comum.js`, `jogo.css`, `qrcode.js`,
 `api/jogo.js` (a API inteira, num arquivo só, dentro da pasta `api`) e `package.json`.

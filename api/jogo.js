@@ -10,6 +10,8 @@
    GET  /api/jogo?acao=admin             (cabeçalho x-chave) painel
    GET  /api/jogo?acao=exportar          (cabeçalho x-chave) CSV
    POST /api/jogo?acao=admin             (cabeçalho x-chave) { op, ... }
+   ops: etapa, abrir_pergunta, revelar, pausar, retomar, iniciar_desafio, mais_tempo,
+        encerrar_desafio, auto_comentarios, moderar, zerar
    ========================================================= */
 /* Tudo num arquivo só, para subir no GitHub sem depender de outros arquivos da pasta api. */
 const postgres = require("postgres");
@@ -288,6 +290,7 @@ async function prepara() {
         atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
       )`;
       await s`ALTER TABLE jogo_estado ADD COLUMN IF NOT EXISTS auto_comentarios BOOLEAN NOT NULL DEFAULT TRUE`;
+      await s`ALTER TABLE jogo_estado ADD COLUMN IF NOT EXISTS pausado_em TIMESTAMPTZ`;
       // Supabase expõe o schema public pela API com a chave publishable.
       // Com RLS ligado e nenhuma política, essa porta fica fechada; a função (dona das tabelas) continua acessando.
       await s`ALTER TABLE jogo_participantes ENABLE ROW LEVEL SECURITY`;
@@ -326,6 +329,7 @@ async function lerEstado(s) {
       (extract(epoch FROM pergunta_inicio) * 1000)::float8 AS pergunta_inicio,
       (extract(epoch FROM desafio_inicio) * 1000)::float8 AS desafio_inicio,
       (extract(epoch FROM desafio_fim) * 1000)::float8 AS desafio_fim,
+      (extract(epoch FROM pausado_em) * 1000)::float8 AS pausado_em,
       (extract(epoch FROM now()) * 1000)::float8 AS agora
     FROM jogo_estado WHERE id = 1`;
   return r[0];
@@ -381,6 +385,7 @@ async function estado(s, res) {
     ok: true,
     agora: e.agora,
     etapa: e.etapa,
+    pausado: e.pausado_em, // relógios congelados neste instante (null = rodando)
     participantes: cont[0].n,
     aguardando: cont[0].pendentes,
     reacoes: cont[0].reacoes,
@@ -505,6 +510,7 @@ async function responder(s, req, res) {
   if (["A", "B", "C", "D"].indexOf(opcao) < 0) return erro(res, 400, "Alternativa inválida.");
   const e = await lerEstado(s);
   if (e.etapa !== "quiz" || e.pergunta !== indice || e.revelado) return erro(res, 409, "Essa pergunta já foi encerrada.");
+  if (e.pausado_em != null) return erro(res, 409, "O jogo está pausado. Responda quando voltar.");
   const limiteMs = TEMPO_PERGUNTA * 1000;
   const decorrido = Math.max(0, e.agora - e.pergunta_inicio);
   if (decorrido > limiteMs + 5000) return erro(res, 409, "Tempo esgotado para essa pergunta.");
@@ -527,6 +533,7 @@ async function desafio(s, req, res) {
   const e = await lerEstado(s);
   if (e.etapa !== "desafio" || e.desafio_inicio == null) return erro(res, 409, "O desafio não está aberto.");
   if (e.agora > e.desafio_fim + 10000) return erro(res, 409, "O tempo do desafio acabou.");
+  if (e.pausado_em != null) return erro(res, 409, "O desafio está pausado. Envie quando voltar.");
   const erroRel = Math.abs(valor - DESAFIO.referencia) / DESAFIO.referencia;
   let pontos = 0;
   for (const f of DESAFIO.faixas) {
@@ -555,7 +562,7 @@ function autorizado(req) {
 
 async function adminDados(s, res) {
   const e = await lerEstado(s);
-  const [pendentes, recentes, resp, top, cont] = await Promise.all([
+  const [pendentes, recentes, resp, top, cont, dist] = await Promise.all([
     s`SELECT m.id, m.tipo, m.texto, m.status, p.nome, p.codigo FROM jogo_mensagens m JOIN jogo_participantes p ON p.id = m.participante_id
       WHERE m.tipo <> 'emoji' AND m.status = 'pendente' ORDER BY m.id ASC LIMIT 100`,
     s`SELECT m.id, m.tipo, m.texto, m.status, p.nome, p.codigo FROM jogo_mensagens m JOIN jogo_participantes p ON p.id = m.participante_id
@@ -566,12 +573,17 @@ async function adminDados(s, res) {
     ranking(s, 50, true),
     s`SELECT (SELECT COUNT(*)::int FROM jogo_participantes) AS participantes,
              (SELECT COUNT(*)::int FROM jogo_mensagens WHERE tipo = 'emoji') AS emojis`,
+    s`SELECT opcao, COUNT(*)::int AS n FROM jogo_respostas_quiz WHERE pergunta = ${e.pergunta} GROUP BY opcao`,
   ]);
+  const distribuicao = { A: 0, B: 0, C: 0, D: 0 };
+  dist.forEach((r) => { distribuicao[r.opcao] = r.n; });
   res.setHeader("Cache-Control", "no-store");
   res.status(200).json({
     ok: true,
+    agora: e.agora,
     estado: e,
-    perguntas: PERGUNTAS.map((p, i) => ({ indice: i, tema: p.tema, correta: p.correta })),
+    perguntas: PERGUNTAS.map((p, i) => Object.assign({ indice: i }, p)),
+    distribuicao,
     tempo: TEMPO_PERGUNTA,
     desafio: { duracaoMin: DESAFIO.duracaoMin, referencia: DESAFIO.referencia },
     pendentes,
@@ -613,16 +625,25 @@ async function adminAcao(s, req, res) {
   } else if (op === "abrir_pergunta") {
     const i = Number(b.indice);
     if (!PERGUNTAS[i]) return erro(res, 400, "Pergunta inexistente.");
-    await s`UPDATE jogo_estado SET etapa = 'quiz', pergunta = ${i}, pergunta_inicio = now(), revelado = FALSE, atualizado_em = now() WHERE id = 1`;
+    await s`UPDATE jogo_estado SET etapa = 'quiz', pergunta = ${i}, pergunta_inicio = now(), revelado = FALSE, pausado_em = NULL, atualizado_em = now() WHERE id = 1`;
   } else if (op === "revelar") {
-    await s`UPDATE jogo_estado SET revelado = TRUE, atualizado_em = now() WHERE id = 1`;
+    await s`UPDATE jogo_estado SET revelado = TRUE, pausado_em = NULL, atualizado_em = now() WHERE id = 1`;
+  } else if (op === "pausar") {
+    await s`UPDATE jogo_estado SET pausado_em = now(), atualizado_em = now() WHERE id = 1 AND pausado_em IS NULL`;
+  } else if (op === "retomar") {
+    // empurra os relógios para a frente pelo tempo em pausa: ninguém perde segundos
+    await s`UPDATE jogo_estado SET
+      pergunta_inicio = CASE WHEN etapa = 'quiz' THEN pergunta_inicio + (now() - pausado_em) ELSE pergunta_inicio END,
+      desafio_inicio = CASE WHEN etapa = 'desafio' THEN desafio_inicio + (now() - pausado_em) ELSE desafio_inicio END,
+      desafio_fim = CASE WHEN etapa = 'desafio' THEN desafio_fim + (now() - pausado_em) ELSE desafio_fim END,
+      pausado_em = NULL, atualizado_em = now() WHERE id = 1 AND pausado_em IS NOT NULL`;
   } else if (op === "iniciar_desafio") {
     const min = DESAFIO.duracaoMin;
-    await s`UPDATE jogo_estado SET etapa = 'desafio', desafio_inicio = now(), desafio_fim = now() + make_interval(mins => ${min}), atualizado_em = now() WHERE id = 1`;
+    await s`UPDATE jogo_estado SET etapa = 'desafio', desafio_inicio = now(), desafio_fim = now() + make_interval(mins => ${min}), pausado_em = NULL, atualizado_em = now() WHERE id = 1`;
   } else if (op === "mais_tempo") {
     await s`UPDATE jogo_estado SET desafio_fim = desafio_fim + interval '5 minutes', atualizado_em = now() WHERE id = 1 AND desafio_fim IS NOT NULL`;
   } else if (op === "encerrar_desafio") {
-    await s`UPDATE jogo_estado SET desafio_fim = now(), atualizado_em = now() WHERE id = 1 AND desafio_fim IS NOT NULL`;
+    await s`UPDATE jogo_estado SET desafio_fim = now(), pausado_em = NULL, atualizado_em = now() WHERE id = 1 AND desafio_fim IS NOT NULL`;
   } else if (op === "auto_comentarios") {
     await s`UPDATE jogo_estado SET auto_comentarios = ${!!b.valor}, atualizado_em = now() WHERE id = 1`;
   } else if (op === "moderar") {
@@ -635,7 +656,7 @@ async function adminAcao(s, req, res) {
     await s`DELETE FROM jogo_respostas_quiz`;
     await s`DELETE FROM jogo_mensagens`;
     await s`DELETE FROM jogo_participantes`;
-    await s`UPDATE jogo_estado SET etapa = 'interacao', pergunta = -1, pergunta_inicio = NULL, revelado = FALSE, desafio_inicio = NULL, desafio_fim = NULL, atualizado_em = now() WHERE id = 1`;
+    await s`UPDATE jogo_estado SET etapa = 'interacao', pergunta = -1, pergunta_inicio = NULL, revelado = FALSE, desafio_inicio = NULL, desafio_fim = NULL, pausado_em = NULL, atualizado_em = now() WHERE id = 1`;
   } else {
     return erro(res, 400, "Operação desconhecida.");
   }
