@@ -131,7 +131,7 @@
       '<h1 class="t-titulo t-desafio-titulo">' + J.esc(d.titulo) + "</h1>" +
       '<div class="t-duas"><div class="t-desafio">' +
       d.enunciado.map(function (p) { return "<p>" + J.esc(p) + "</p>"; }).join("") +
-      "<ul>" + d.itens.map(function (i) { return "<li>" + J.esc(i) + "</li>"; }).join("") + "</ul></div>" +
+      (d.resolucao.length ? "<p><b>Resolução</b></p><ul>" + d.resolucao.map(function (i) { return "<li>" + J.esc(i) + "</li>"; }).join("") + "</ul>" : "") + "</div>" +
       '<div class="t-desafio-lado">' +
       (d.terminou
         ? '<p class="t-rotulo">Tempo esgotado</p><p class="t-info">Valor de referência</p><p class="t-grande t-referencia">' + J.reais(d.referencia) + "</p>"

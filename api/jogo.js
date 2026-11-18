@@ -177,13 +177,15 @@ const DESAFIO = {
     "BESS: todo dia o sistema faz 1 ciclo. Carrega só com energia que seria cortada (custo zero) e descarrega no pico da noite, vendendo a R$ 600,00/MWh. Para preservar a vida útil, opera com profundidade de descarga de 90% da capacidade nominal. Admita que essa profundidade limita a energia absorvida da usina em cada carga e que a eficiência de ida e volta (carga + descarga) é de 85% sobre essa energia.",
     "Cibersegurança: um invasor entrou pela VPN do fornecedor de manutenção, que não exigia autenticação multifator (MFA), e criptografou o servidor do EMS/SCADA com ransomware. Por segurança, o BESS ficou parado 12 dias até a restauração. A resposta ao incidente (perícia, reinstalação e auditoria) custou R$ 350.000,00. Um projeto de segmentação de rede no padrão IEC 62443, com MFA, teria evitado o ataque e custava R$ 180.000,00.",
   ],
-  itens: [
-    "a) Quanta energia o BESS absorve da usina em cada ciclo, respeitando a profundidade de descarga?",
-    "b) Quanta energia ele entrega à rede por ciclo e qual é a receita diária?",
-    "c) Qual foi o prejuízo total do ataque (receita perdida nos 12 dias + resposta ao incidente)?",
-    "d) RESPOSTA FINAL: quanto a empresa teria economizado se tivesse investido na segmentação com MFA antes do ataque?",
+  // resolução: só aparece no celular e no telão depois que o desafio termina
+  resolucao: [
+    "Energia absorvida por ciclo: 80 MWh × 90% = 72 MWh.",
+    "Energia entregue à rede: 72 MWh × 85% = 61,2 MWh por dia.",
+    "Receita diária: 61,2 MWh × R$ 600/MWh = R$ 36.720. Em 12 dias parado: R$ 440.640 perdidos.",
+    "Prejuízo do ataque: R$ 440.640 + R$ 350.000 de resposta ao incidente = R$ 790.640.",
+    "Economia com a segmentação e MFA: R$ 790.640 − R$ 180.000 = R$ 610.640.",
   ],
-  pergunta: "Resposta final (item d): economia em R$",
+  pergunta: "Quanto a empresa teria economizado se tivesse investido na segmentação com MFA antes do ataque? (R$)",
   unidade: "R$",
   // Gabarito: energia absorvida = 80 MWh · 0,90 = 72 MWh; entregue = 72 · 0,85 = 61,2 MWh
   // Receita diária = 61,2 MWh · R$ 600 = R$ 36.720; perdida em 12 dias = R$ 440.640
@@ -582,7 +584,7 @@ async function estado(res) {
       enviados: Object.keys(t.des).length,
       titulo: DESAFIO.titulo,
       enunciado: DESAFIO.enunciado,
-      itens: DESAFIO.itens,
+      resolucao: terminou ? DESAFIO.resolucao : [],
       pergunta: DESAFIO.pergunta,
       unidade: DESAFIO.unidade,
       referencia: terminou ? DESAFIO.referencia : null,

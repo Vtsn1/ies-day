@@ -242,7 +242,7 @@
       '<div class="j-barra"><i id="barra"></i></div>' +
       '<h2 class="j-titulo">' + J.esc(d.titulo) + "</h2>" +
       d.enunciado.map(function (p) { return '<p class="j-enunciado">' + J.esc(p) + "</p>"; }).join("") +
-      '<ul class="j-itens">' + d.itens.map(function (i) { return "<li>" + J.esc(i) + "</li>"; }).join("") + "</ul>";
+      (d.resolucao.length ? '<p class="j-enunciado"><b>Resolução</b></p><ul class="j-itens">' + d.resolucao.map(function (i) { return "<li>" + J.esc(i) + "</li>"; }).join("") + "</ul>" : "");
     if (d.terminou) {
       var txt = enviado
         ? "Sua resposta: <b>" + J.reais(enviado.valor) + "</b>" + (enviado.pontos != null ? " · <b>" + enviado.pontos + " pontos</b>" : "")
@@ -256,7 +256,7 @@
       '<label class="j-campo"><span>' + J.esc(d.pergunta) + "</span>" +
       '<input id="d-valor" inputmode="decimal" placeholder="Ex.: 123.456,78" value="' + J.esc(r.valor) + '"></label>' +
       '<label class="j-campo"><span>Memorial de cálculo (como chegou no resultado)</span>' +
-      '<textarea id="d-just" rows="5" maxlength="3000" placeholder="Corrente, perdas em 69 kV e 138 kV, energia evitada…">' + J.esc(r.justificativa) + "</textarea></label>" +
+      '<textarea id="d-just" rows="5" maxlength="3000" placeholder="Mostre as contas e o raciocínio que levaram ao resultado">' + J.esc(r.justificativa) + "</textarea></label>" +
       '<p class="j-nota">O rascunho fica salvo neste aparelho. Você pode reenviar até o tempo acabar; vale o último envio.</p>' +
       (enviado ? '<p class="j-dica">Enviado: <b>' + J.reais(enviado.valor) + "</b> (" + enviado.envios + " envio(s))</p>" : "") +
       '<button class="botao primario j-largo" type="submit">' + (enviado ? "Reenviar resposta" : "Enviar resposta") + "</button>" +
