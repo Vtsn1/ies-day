@@ -103,11 +103,12 @@ Os dados do jogo ficam num Redis criado dentro da própria Vercel. Não precisa 
 
 ### Pontuação
 
-- **Etapa 1 · Quiz (10 perguntas, 30 s cada):** só pontua quem acerta. Acerto vale de 500 a 1000 pontos: 1000 se responder na hora e cai até 500 no fim dos 30 s. Erro ou sem resposta vale 0. Vale a primeira resposta.
+- **Etapa 1 · Quiz (10 perguntas, 30 s cada):** só pontua quem acerta. Acerto vale de 500 a 1000 pontos: 1000 se responder na hora e cai até 500 no fim dos 30 s. Erro ou sem resposta vale 0. Dá para trocar de alternativa enquanto o tempo corre: vale a última, e a pontuação usa o tempo da troca.
 - **Empate:** mais acertos na frente; persistindo, quem somou menos tempo nas respostas certas.
 - **Etapa 2 · Desafio (30 min):** erro de até 2% vale 2000, até 10% vale 1000, mais um bônus de até 500 por enviar cedo. Pode reenviar; vale o último envio. Os pontos do desafio só entram no ranking quando ele termina.
 - Perguntas, gabarito e o desafio ficam no começo de `api/jogo.js` (só no servidor).
 - Comentários vão direto para o telão (dá para desligar no `/admin`); perguntas sempre passam pela seleção da organização.
+- Cada pessoa manda até 3 mensagens a cada 30 s; a mesma mensagem repetida em 5 min é ignorada sem erro.
 - A home do site tem o painel **Ao vivo** com pessoas no jogo, reações, mural e ranking; ele só aparece quando a API está funcionando.
 
 ### Backup no celular

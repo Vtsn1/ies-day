@@ -50,7 +50,9 @@
       $("#eu-id").textContent = eu.codigo;
       atualizaMeu();
     }
-    if (info.ok && info.acao === "mensagem" && info.resposta.moderacao) aviso("Enviado para a organização!", "ok");
+    if (info.ok && info.acao === "mensagem" && info.item.corpo.tipo !== "emoji") {
+      aviso(info.resposta.repetida ? "Essa mensagem já tinha sido enviada." : info.resposta.moderacao ? "Enviado para a organização!" : "Comentário enviado para o telão!", "ok");
+    }
     if (info.ok && info.acao === "desafio") { aviso("Resposta do desafio registrada!", "ok"); atualizaMeu(); }
     if (!info.ok && !info.rede && info.erro) {
       aviso(info.erro, "erro");
@@ -162,7 +164,9 @@
     if (!q || !q.pergunta) {
       return '<p class="secao-rotulo">Quiz Sem Fronteiras</p><h2 class="j-titulo">Prepare-se!</h2><p class="j-sub">A primeira pergunta já vai aparecer.</p>';
     }
-    var minha = minhasRespostas()[q.indice];
+    // revelada: vale o que o servidor registrou (uma troca fora do tempo é recusada lá)
+    var noServidor = q.revelado && meusDados && meusDados.respostas[q.indice];
+    var minha = noServidor ? noServidor.opcao : minhasRespostas()[q.indice];
     var cab =
       '<div class="j-quiz-cab"><span>Pergunta ' + (q.indice + 1) + " de " + q.total + "</span>" +
       '<span class="j-timer" id="timer"></span></div>' +
@@ -174,7 +178,7 @@
       if (minha === l) cls += " escolhida";
       if (q.revelado && q.pergunta.correta === l) cls += " certa";
       else if (q.revelado && minha === l) cls += " errada";
-      var dis = minha || q.revelado || estado.pausado ? " disabled" : "";
+      var dis = q.revelado || estado.pausado ? " disabled" : "";
       return '<button type="button" class="' + cls + '" data-op="' + l + '"' + dis + "><b>" + l + "</b><span>" + J.esc(q.pergunta.opcoes[l]) + "</span></button>";
     }).join("");
     var rodape = "";
@@ -186,7 +190,7 @@
         "<strong>" + (!minha ? "Você não respondeu a tempo." : acertou ? "Acertou! " + (pts != null ? "+" + pts + " pontos" : "") : "Não foi dessa vez.") + "</strong>" +
         "<p>Resposta certa: <b>" + q.pergunta.correta + "</b>. " + J.esc(q.pergunta.justificativa) + "</p></div>";
     } else if (minha) {
-      rodape = '<p class="j-dica">Resposta <b>' + minha + "</b> registrada. Aguarde o resultado no telão.</p>";
+      rodape = '<p class="j-dica">Resposta <b>' + minha + "</b> registrada. Pode trocar até o tempo acabar; vale a última.</p>";
     } else if (estado.pausado) {
       rodape = '<p class="j-dica">Jogo pausado. As alternativas voltam assim que a organização continuar.</p>';
     } else {
@@ -244,7 +248,7 @@
       b.addEventListener("click", function () {
         var q = estado.quiz;
         var resp = minhasRespostas();
-        if (resp[q.indice]) return;
+        if (resp[q.indice] === b.dataset.op) return;
         resp[q.indice] = b.dataset.op;
         J.guarda(CHAVE_RESP, resp); // backup local na hora do toque
         J.enfileira("responder", { id: eu.id, pergunta: q.indice, opcao: b.dataset.op });

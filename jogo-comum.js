@@ -117,10 +117,15 @@
   // consulta periódica do estado, sem sobrepor chamadas
   function acompanha(intervalo, aoReceber, aoFalhar) {
     var parado = false;
+    var maisNovo = 0; // instante (relógio do banco) do estado mais recente já mostrado
     function volta() {
       if (parado) return;
       chama("GET", "estado").then(
-        function (d) { aoReceber(d); },
+        function (d) {
+          if (d.agora < maisNovo) return; // cópia antiga da CDN: não volta a tela para trás
+          maisNovo = d.agora;
+          aoReceber(d);
+        },
         function (e) { if (aoFalhar) aoFalhar(e); }
       ).then(function () { setTimeout(volta, document.hidden ? intervalo * 3 : intervalo); });
     }

@@ -560,7 +560,8 @@ async function estado(res) {
     };
   }
   // cache curto na CDN da Vercel: centenas de celulares consultando viram poucas chamadas ao banco
-  res.setHeader("Cache-Control", "public, s-maxage=1, stale-while-revalidate=2");
+  // sem stale-while-revalidate: resposta velha da CDN fazia o celular voltar para a pergunta anterior
+  res.setHeader("Cache-Control", "public, s-maxage=1");
   res.status(200).json(out);
 }
 
@@ -632,8 +633,15 @@ async function mensagem(req, res) {
   if (tipo !== "comentario" && tipo !== "pergunta") return erro(res, 400, "Tipo inválido.");
   const t = texto(b.texto, 280);
   if (t.length < 2) return erro(res, 400, "Escreva alguma coisa.");
-  const livre = await cmd(["SET", K.limite("msg", id), "1", "NX", "PX", 10000]);
-  if (!livre) return erro(res, 429, "Calma! Espere alguns segundos para mandar outra.");
+  // mesmo texto mandado de novo (toque duplo, reenvio) em até 5 min: não duplica nem dá erro
+  const assinatura = tipo + "\n" + t;
+  const [ultima, envios] = await pipe([["GET", K.limite("ult", id)], ["GET", K.limite("msg", id)]]);
+  if (ultima === assinatura) return res.status(200).json({ ok: true, repetida: true });
+  // até 3 mensagens a cada 30 s por pessoa
+  const recentes = json(envios, []).filter((x) => x > Date.now() - 30000);
+  if (recentes.length >= 3) return erro(res, 429, "Você mandou 3 mensagens seguidas. Espere alguns segundos para mandar outra.");
+  recentes.push(Date.now());
+  await pipe([["SET", K.limite("msg", id), JSON.stringify(recentes), "PX", 30000], ["SET", K.limite("ult", id), assinatura, "PX", 300000]]);
   // comentários podem ir direto ao telão; perguntas sempre passam pela seleção da organização
   const e = await lerEstado();
   const status = tipo === "comentario" && e.auto_comentarios ? "aprovada" : "pendente";
@@ -659,9 +667,12 @@ async function responder(req, res) {
   const tempo = Math.min(decorrido, limiteMs);
   const correta = PERGUNTAS[indice].correta === opcao;
   const pontos = correta ? Math.round(500 + 500 * (1 - tempo / limiteMs)) : 0;
-  // HSETNX: vale só a primeira resposta de cada pessoa
-  const novo = await cmd(["HSETNX", K.q(indice), id, JSON.stringify({ opcao, correta, tempo: Math.round(tempo), pontos, t: e.agora })]);
-  res.status(200).json({ ok: true, registrada: Number(novo) === 1, repetida: Number(novo) !== 1 });
+  // trocar de alternativa vale enquanto o tempo corre; a pontuação passa a usar o tempo da troca.
+  // Mandar a mesma alternativa de novo não muda nada (não piora o tempo).
+  const antes = json(await cmd(["HGET", K.q(indice), id]), null);
+  if (antes && antes.opcao === opcao) return res.status(200).json({ ok: true, registrada: true, trocada: false });
+  await cmd(["HSET", K.q(indice), id, JSON.stringify({ opcao, correta, tempo: Math.round(tempo), pontos, t: e.agora })]);
+  res.status(200).json({ ok: true, registrada: true, trocada: true });
 }
 
 async function desafio(req, res) {
