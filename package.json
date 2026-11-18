@@ -1,8 +1,5 @@
 {
   "name": "ies-day",
   "private": true,
-  "description": "Site e jogo interativo do IES DAY: Energia sem Fronteiras",
-  "dependencies": {
-    "postgres": "3.4.9"
-  }
+  "description": "Site e jogo interativo do IES DAY: Energia sem Fronteiras"
 }

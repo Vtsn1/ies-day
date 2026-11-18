@@ -1,20 +1,19 @@
 /* =========================================================
-   API DO JOGO IES DAY · uma função só (o plano grátis da Vercel limita a quantidade)
-   GET  /api/jogo?acao=saude             teste rápido: o banco está conectado?
-   GET  /api/jogo?acao=estado            estado público (telão e celulares)
+   API DO JOGO IES DAY · uma função só, sem dependências
+   Os dados ficam no Redis criado na aba Storage da própria Vercel.
+   GET  /api/jogo?acao=saude             teste rápido: o armazenamento está ok?
+   GET  /api/jogo?acao=estado            estado público (telão, celulares e home)
    GET  /api/jogo?acao=meu&id=...        situação de um participante
    POST /api/jogo?acao=entrar            { id, nome, matricula, visitante }
    POST /api/jogo?acao=mensagem          { id, tipo: emoji|comentario|pergunta, texto }
    POST /api/jogo?acao=responder         { id, pergunta, opcao }
    POST /api/jogo?acao=desafio           { id, valor, justificativa }
-   GET  /api/jogo?acao=admin             (cabeçalho x-chave) painel
-   GET  /api/jogo?acao=exportar          (cabeçalho x-chave) CSV
-   POST /api/jogo?acao=admin             (cabeçalho x-chave) { op, ... }
+   GET  /api/jogo?acao=admin             (cabeçalhos x-usuario e x-chave) painel
+   GET  /api/jogo?acao=exportar          (cabeçalhos x-usuario e x-chave) CSV
+   POST /api/jogo?acao=admin             (cabeçalhos x-usuario e x-chave) { op, ... }
    ops: etapa, abrir_pergunta, revelar, pausar, retomar, iniciar_desafio, mais_tempo,
         encerrar_desafio, auto_comentarios, moderar, zerar
    ========================================================= */
-/* Tudo num arquivo só, para subir no GitHub sem depender de outros arquivos da pasta api. */
-const postgres = require("postgres");
 
 /* ======================= CONTEÚDO ======================= */
 /* =========================================================
@@ -197,135 +196,227 @@ const DESAFIO = {
   bonusMax: 500, // bônus por enviar cedo (proporcional ao tempo restante)
 };
 
-/* ======================= BANCO ======================= */
-/* Conexão com o Postgres (Supabase) e criação das tabelas na primeira chamada.
-   Na Vercel, a variável DATABASE_URL deve ter a "connection string" do Supabase
-   no modo Transaction pooler (porta 6543). */
+/* ======================= ARMAZENAMENTO ======================= */
+/* Guarda os dados no Redis criado na aba Storage da própria Vercel.
+   Ao conectar o banco ao projeto, a Vercel cria as variáveis sozinha:
+   - KV_REST_API_URL + KV_REST_API_TOKEN (ou UPSTASH_REDIS_REST_URL/TOKEN)  → acesso por HTTPS
+   - REDIS_URL                                                             → acesso direto
+   Sem nenhuma delas, usa a memória da função (serve só para teste: some ao reiniciar). */
+const net = require("net");
+const tls = require("tls");
 
-let sql = null;
-let pronto = null;
+const PFX = "ies:";
+const K = {
+  estado: PFX + "estado",
+  part: PFX + "part",
+  msg: PFX + "msg",
+  seq: PFX + "seq",
+  emo: PFX + "emo",
+  reacoes: PFX + "reacoes",
+  des: PFX + "des",
+  q: (i) => PFX + "q:" + i,
+  limite: (tipo, id) => PFX + "lim:" + tipo + ":" + id,
+};
+const TEMPO_LIMITE_MS = 8000; // nenhuma chamada ao banco pode travar a função
 
-// Aceita a senha colada "crua" (com ?, #, @, espaço…): codifica só a parte da senha
-function arrumaUrl(bruta) {
-  const url = String(bruta).trim();
-  const m = url.match(/^(postgres(?:ql)?:\/\/)([^:\/]+):(.*)@([^@\/]+)(\/.*)?$/);
-  if (!m) return url;
-  let senha = m[3].trim();
-  try { senha = decodeURIComponent(senha); } catch (e) {}
-  return m[1] + m[2] + ":" + encodeURIComponent(senha) + "@" + m[4].trim() + (m[5] || "/postgres");
+function configuracao() {
+  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (url && token) return { tipo: "rest", url: url.replace(/\/+$/, ""), token };
+  const tcp = process.env.REDIS_URL || process.env.KV_URL;
+  if (tcp) return { tipo: "tcp", url: tcp };
+  return { tipo: "memoria" };
 }
 
-function conexao() {
-  // nos testes locais, um banco em memória pode ser injetado aqui
-  if (global.__SQL_TESTE__) return global.__SQL_TESTE__;
-  if (!sql) {
-    const bruta = process.env.DATABASE_URL || process.env.POSTGRES_URL;
-    if (!bruta) throw new Error("Banco não configurado: falta a variável DATABASE_URL na Vercel.");
-    const url = arrumaUrl(bruta);
-    // a conexão direta do Supabase (db.xxx.supabase.co) só funciona por IPv6, que a Vercel não tem
-    if (/@db\.[a-z0-9]+\.supabase\.co/i.test(url)) {
-      throw new Error("DATABASE_URL usa a conexão direta do Supabase, que não funciona na Vercel. Use a do Transaction pooler (pooler.supabase.com, porta 6543).");
-    }
-    const local = /@(localhost|127\.0\.0\.1)[:/]/.test(url);
-    sql = postgres(url, {
-      prepare: false, // obrigatório no pooler do Supabase (modo transaction)
-      max: Number(process.env.PG_MAX || 4), // poucas conexões por execução da função
-      idle_timeout: 20,
-      connect_timeout: 10,
-      ssl: local ? false : "require",
+// --- acesso por HTTPS (Upstash) ---
+async function pipeRest(cfg, cmds) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), TEMPO_LIMITE_MS);
+  try {
+    const r = await fetch(cfg.url + "/pipeline", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + cfg.token, "Content-Type": "application/json" },
+      body: JSON.stringify(cmds.map((c) => c.map(String))),
+      signal: ctrl.signal,
     });
+    const d = await r.json().catch(() => null);
+    if (!r.ok || !Array.isArray(d)) throw new Error("Banco respondeu " + r.status + (d && d.error ? ": " + d.error : ""));
+    return d.map((x) => {
+      if (x && x.error) throw new Error("Banco: " + x.error);
+      return x ? x.result : null;
+    });
+  } catch (e) {
+    if (e.name === "AbortError") throw new Error("O banco demorou demais para responder.");
+    throw e;
+  } finally {
+    clearTimeout(t);
   }
-  return sql;
 }
 
-// Toda chamada passa por aqui: se o banco não responder, devolve erro com a causa em vez de pendurar a função
-const PRAZO_BANCO_MS = 8000;
-function comPrazo(promessa) {
-  let relogio;
-  const estouro = new Promise((_, rejeita) => {
-    relogio = setTimeout(() => rejeita(new Error("O banco de dados não respondeu em " + PRAZO_BANCO_MS / 1000 + " s. Tente de novo em instantes; se continuar, confira se o projeto no Supabase está ativo.")), PRAZO_BANCO_MS);
+// --- acesso direto (protocolo do Redis) ---
+let conexaoTcp = null;
+function abreTcp(cfg) {
+  return new Promise((ok, falha) => {
+    const u = new URL(cfg.url);
+    const seguro = u.protocol === "rediss:";
+    const porta = Number(u.port || 6379);
+    const op = { host: u.hostname, port: porta, servername: u.hostname };
+    const sock = seguro ? tls.connect(op) : net.connect(op);
+    const c = { sock, fila: [], buf: Buffer.alloc(0), morta: false };
+    const t = setTimeout(() => { sock.destroy(new Error("O banco demorou demais para conectar.")); }, TEMPO_LIMITE_MS);
+    sock.on(seguro ? "secureConnect" : "connect", async () => {
+      clearTimeout(t);
+      try {
+        const pre = [];
+        const senha = decodeURIComponent(u.password || "");
+        const usuario = decodeURIComponent(u.username || "");
+        if (senha) pre.push(usuario && usuario !== "default" ? ["AUTH", usuario, senha] : ["AUTH", senha]);
+        const db = (u.pathname || "").replace("/", "");
+        if (db && db !== "0") pre.push(["SELECT", db]);
+        if (pre.length) await enviaTcp(c, pre);
+        ok(c);
+      } catch (e) { falha(e); }
+    });
+    sock.on("data", (d) => { c.buf = Buffer.concat([c.buf, d]); lerRespostas(c); });
+    const derruba = (e) => {
+      c.morta = true;
+      clearTimeout(t);
+      if (conexaoTcp === c) conexaoTcp = null;
+      const erroFinal = e || new Error("Conexão com o banco fechada.");
+      c.fila.splice(0).forEach((p) => p.falha(erroFinal));
+      falha(erroFinal);
+    };
+    sock.on("error", derruba);
+    sock.on("close", () => derruba());
   });
-  return Promise.race([promessa, estouro]).finally(() => clearTimeout(relogio));
+}
+function resp(cmd) {
+  let s = "*" + cmd.length + "\r\n";
+  cmd.forEach((a) => { const b = Buffer.from(String(a)); s += "$" + b.length + "\r\n" + b.toString("binary") + "\r\n"; });
+  return Buffer.from(s, "binary");
+}
+function lerUm(buf, i) {
+  const fimLinha = buf.indexOf("\r\n", i);
+  if (fimLinha < 0) return null;
+  const tipo = String.fromCharCode(buf[i]);
+  const linha = buf.toString("utf8", i + 1, fimLinha);
+  let p = fimLinha + 2;
+  if (tipo === "+") return { v: linha, p };
+  if (tipo === "-") return { v: new Error(linha), p };
+  if (tipo === ":") return { v: Number(linha), p };
+  if (tipo === "$") {
+    const n = Number(linha);
+    if (n < 0) return { v: null, p };
+    if (buf.length < p + n + 2) return null;
+    return { v: buf.toString("utf8", p, p + n), p: p + n + 2 };
+  }
+  if (tipo === "*") {
+    const n = Number(linha);
+    if (n < 0) return { v: null, p };
+    const arr = [];
+    for (let k = 0; k < n; k++) {
+      const x = lerUm(buf, p);
+      if (!x) return null;
+      arr.push(x.v);
+      p = x.p;
+    }
+    return { v: arr, p };
+  }
+  throw new Error("Resposta inválida do banco.");
+}
+function lerRespostas(c) {
+  while (c.fila.length && c.buf.length) {
+    const x = lerUm(c.buf, 0);
+    if (!x) return;
+    c.buf = c.buf.slice(x.p);
+    const p = c.fila.shift();
+    p.ok(x.v);
+  }
+}
+function enviaTcp(c, cmds) {
+  const promessas = cmds.map(() => new Promise((ok, falha) => c.fila.push({ ok, falha })));
+  c.sock.write(Buffer.concat(cmds.map(resp)));
+  return Promise.all(promessas).then((rs) => rs.map((v) => {
+    if (v instanceof Error) throw new Error("Banco: " + v.message);
+    return v;
+  }));
+}
+async function pipeTcp(cfg, cmds) {
+  if (!conexaoTcp || conexaoTcp.morta) conexaoTcp = await abreTcp(cfg);
+  const c = conexaoTcp;
+  let t;
+  try {
+    return await Promise.race([
+      enviaTcp(c, cmds),
+      new Promise((_, falha) => { t = setTimeout(() => { c.sock.destroy(); falha(new Error("O banco demorou demais para responder.")); }, TEMPO_LIMITE_MS); }),
+    ]);
+  } finally {
+    clearTimeout(t);
+  }
 }
 
-async function prepara() {
-  const s = conexao();
-  if (!pronto) {
-    pronto = (async () => {
-      // Schema já pronto? A consulta ao catálogo não pega lock nas tabelas do jogo.
-      const r = await s`SELECT to_regclass('jogo_respostas_desafio') IS NOT NULL AND EXISTS (
-          SELECT 1 FROM information_schema.columns
-          WHERE table_schema = current_schema() AND table_name = 'jogo_estado' AND column_name = 'pausado_em') AS ok`;
-      if (r[0].ok) return;
-      // CREATE/ALTER pedem lock exclusivo: se outra sessão estiver com a tabela aberta, esperariam para sempre
-      // e todas as consultas do jogo ficariam na fila atrás deles. Com lock_timeout, falham rápido e tentam de novo.
-      await s.begin(async (t) => {
-        await t`SET LOCAL lock_timeout = '4s'`;
-        await t`CREATE TABLE IF NOT EXISTS jogo_participantes (
-          id TEXT PRIMARY KEY,
-          codigo TEXT NOT NULL,
-          nome TEXT NOT NULL,
-          matricula TEXT,
-          visitante BOOLEAN NOT NULL DEFAULT FALSE,
-          criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
-        )`;
-        await t`CREATE TABLE IF NOT EXISTS jogo_estado (
-          id INT PRIMARY KEY,
-          etapa TEXT NOT NULL DEFAULT 'interacao',
-          pergunta INT NOT NULL DEFAULT -1,
-          pergunta_inicio TIMESTAMPTZ,
-          revelado BOOLEAN NOT NULL DEFAULT FALSE,
-          desafio_inicio TIMESTAMPTZ,
-          desafio_fim TIMESTAMPTZ,
-          atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
-        )`;
-        await t`INSERT INTO jogo_estado (id) VALUES (1) ON CONFLICT (id) DO NOTHING`;
-        await t`CREATE TABLE IF NOT EXISTS jogo_mensagens (
-          id SERIAL PRIMARY KEY,
-          participante_id TEXT NOT NULL REFERENCES jogo_participantes(id) ON DELETE CASCADE,
-          tipo TEXT NOT NULL,
-          texto TEXT NOT NULL,
-          status TEXT NOT NULL DEFAULT 'pendente',
-          criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
-        )`;
-        await t`CREATE INDEX IF NOT EXISTS jogo_mensagens_tipo_criado ON jogo_mensagens (tipo, criado_em DESC)`;
-        await t`CREATE TABLE IF NOT EXISTS jogo_respostas_quiz (
-          participante_id TEXT NOT NULL REFERENCES jogo_participantes(id) ON DELETE CASCADE,
-          pergunta INT NOT NULL,
-          opcao TEXT NOT NULL,
-          correta BOOLEAN NOT NULL,
-          tempo_ms INT NOT NULL,
-          pontos INT NOT NULL,
-          criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
-          PRIMARY KEY (participante_id, pergunta)
-        )`;
-        await t`CREATE TABLE IF NOT EXISTS jogo_respostas_desafio (
-          participante_id TEXT PRIMARY KEY REFERENCES jogo_participantes(id) ON DELETE CASCADE,
-          valor DOUBLE PRECISION NOT NULL,
-          justificativa TEXT,
-          erro DOUBLE PRECISION NOT NULL,
-          pontos INT NOT NULL,
-          envios INT NOT NULL DEFAULT 1,
-          atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
-        )`;
-        await t`ALTER TABLE jogo_estado ADD COLUMN IF NOT EXISTS auto_comentarios BOOLEAN NOT NULL DEFAULT TRUE`;
-        await t`ALTER TABLE jogo_estado ADD COLUMN IF NOT EXISTS pausado_em TIMESTAMPTZ`;
-        // Supabase expõe o schema public pela API com a chave publishable.
-        // Com RLS ligado e nenhuma política, essa porta fica fechada; a função (dona das tabelas) continua acessando.
-        await t`ALTER TABLE jogo_participantes ENABLE ROW LEVEL SECURITY`;
-        await t`ALTER TABLE jogo_estado ENABLE ROW LEVEL SECURITY`;
-        await t`ALTER TABLE jogo_mensagens ENABLE ROW LEVEL SECURITY`;
-        await t`ALTER TABLE jogo_respostas_quiz ENABLE ROW LEVEL SECURITY`;
-        await t`ALTER TABLE jogo_respostas_desafio ENABLE ROW LEVEL SECURITY`;
-      });
-    })().catch((e) => {
-      pronto = null;
-      throw e;
-    });
-  }
-  await comPrazo(pronto);
-  return s;
+// --- memória (só para teste) ---
+const mem = global.__IES_MEM__ || (global.__IES_MEM__ = { dados: new Map(), expira: new Map() });
+function memVivo(k) {
+  const e = mem.expira.get(k);
+  if (e && e <= Date.now()) { mem.dados.delete(k); mem.expira.delete(k); }
+  return mem.dados.get(k);
 }
+function memHash(k, criar) {
+  let h = memVivo(k);
+  if (!h && criar) { h = new Map(); mem.dados.set(k, h); }
+  return h;
+}
+function memCmd(c) {
+  const op = String(c[0]).toUpperCase();
+  const k = c[1];
+  switch (op) {
+    case "GET": { const v = memVivo(k); return typeof v === "string" ? v : null; }
+    case "SET": {
+      const nx = c.some((x) => String(x).toUpperCase() === "NX");
+      const iPx = c.findIndex((x) => String(x).toUpperCase() === "PX");
+      if (nx && memVivo(k) !== undefined) return null;
+      mem.dados.set(k, String(c[2]));
+      if (iPx > 0) mem.expira.set(k, Date.now() + Number(c[iPx + 1])); else mem.expira.delete(k);
+      return "OK";
+    }
+    case "INCR": { const n = Number(memVivo(k) || 0) + 1; mem.dados.set(k, String(n)); return n; }
+    case "DEL": { let n = 0; c.slice(1).forEach((x) => { if (mem.dados.delete(x)) n++; mem.expira.delete(x); }); return n; }
+    case "HGET": { const h = memHash(k); return h && h.has(c[2]) ? h.get(c[2]) : null; }
+    case "HSET": { const h = memHash(k, true); const novo = !h.has(c[2]); h.set(c[2], String(c[3])); return novo ? 1 : 0; }
+    case "HSETNX": { const h = memHash(k, true); if (h.has(c[2])) return 0; h.set(c[2], String(c[3])); return 1; }
+    case "HGETALL": { const h = memHash(k); const out = []; if (h) h.forEach((v, f) => out.push(f, v)); return out; }
+    case "HLEN": { const h = memHash(k); return h ? h.size : 0; }
+    case "LPUSH": { let l = memVivo(k); if (!Array.isArray(l)) { l = []; mem.dados.set(k, l); } c.slice(2).forEach((v) => l.unshift(String(v))); return l.length; }
+    case "LTRIM": { const l = memVivo(k); if (Array.isArray(l)) mem.dados.set(k, l.slice(Number(c[2]), Number(c[3]) + 1)); return "OK"; }
+    case "LRANGE": { const l = memVivo(k); return Array.isArray(l) ? l.slice(Number(c[2]), Number(c[3]) + 1) : []; }
+    default: throw new Error("Comando não suportado: " + op);
+  }
+}
+
+async function pipe(cmds) {
+  const cfg = configuracao();
+  if (cfg.tipo === "rest") return pipeRest(cfg, cmds);
+  if (cfg.tipo === "tcp") return pipeTcp(cfg, cmds);
+  return cmds.map(memCmd);
+}
+async function cmd(c) { return (await pipe([c]))[0]; }
+
+function json(v, padrao) {
+  if (v == null) return padrao;
+  try { return JSON.parse(v); } catch (e) { return padrao; }
+}
+function hash(flat) {
+  const o = {};
+  if (Array.isArray(flat)) for (let i = 0; i < flat.length; i += 2) o[flat[i]] = json(flat[i + 1], null);
+  else if (flat && typeof flat === "object") Object.keys(flat).forEach((f) => { o[f] = json(flat[f], null); });
+  return o;
+}
+
+const ESTADO_INICIAL = {
+  etapa: "interacao", pergunta: -1, pergunta_inicio: null, revelado: false,
+  desafio_inicio: null, desafio_fim: null, pausado_em: null, auto_comentarios: true,
+};
 
 /* ======================= API ======================= */
 
@@ -344,34 +435,55 @@ function corpo(req) {
   try { return JSON.parse(req.body || "{}"); } catch (e) { return {}; }
 }
 
-async function lerEstado(s) {
-  const r = await s`SELECT etapa, pergunta, revelado, auto_comentarios,
-      (extract(epoch FROM pergunta_inicio) * 1000)::float8 AS pergunta_inicio,
-      (extract(epoch FROM desafio_inicio) * 1000)::float8 AS desafio_inicio,
-      (extract(epoch FROM desafio_fim) * 1000)::float8 AS desafio_fim,
-      (extract(epoch FROM pausado_em) * 1000)::float8 AS pausado_em,
-      (extract(epoch FROM now()) * 1000)::float8 AS agora
-    FROM jogo_estado WHERE id = 1`;
-  return r[0];
+async function lerEstado() {
+  const e = Object.assign({}, ESTADO_INICIAL, json(await cmd(["GET", K.estado]), {}));
+  e.agora = Date.now();
+  return e;
+}
+async function gravaEstado(mudancas) {
+  const e = await lerEstado();
+  delete e.agora;
+  Object.assign(e, mudancas);
+  await cmd(["SET", K.estado, JSON.stringify(e)]);
+  return e;
+}
+
+// carrega tudo o que o placar precisa numa ida só ao banco
+async function carregaTudo() {
+  const cmds = [["GET", K.estado], ["HGETALL", K.part], ["HGETALL", K.msg], ["LRANGE", K.emo, 0, 59], ["GET", K.reacoes], ["HGETALL", K.des]];
+  PERGUNTAS.forEach((_, i) => cmds.push(["HGETALL", K.q(i)]));
+  const r = await pipe(cmds);
+  const e = Object.assign({}, ESTADO_INICIAL, json(r[0], {}));
+  e.agora = Date.now();
+  return {
+    e,
+    part: hash(r[1]),
+    msg: Object.values(hash(r[2])).filter(Boolean),
+    emo: (r[3] || []).map((x) => json(x, null)).filter(Boolean),
+    reacoes: Number(r[4] || 0),
+    des: hash(r[5]),
+    quiz: r.slice(6).map(hash),
+  };
 }
 
 // pontos do desafio só entram no ranking depois que ele termina
-async function ranking(s, limite, incluirDesafio) {
-  // desempate: mais acertos e, depois, menor tempo somado nas respostas certas
-  return s`SELECT p.id, p.nome, p.codigo, p.matricula, p.visitante,
-      COALESCE(q.acertos, 0)::int AS acertos,
-      COALESCE(q.tempo_acertos, 0)::int AS tempo_acertos,
-      COALESCE(q.pts, 0)::int AS quiz,
-      (CASE WHEN ${incluirDesafio} THEN COALESCE(d.pontos, 0) ELSE 0 END)::int AS desafio,
-      (COALESCE(q.pts, 0) + CASE WHEN ${incluirDesafio} THEN COALESCE(d.pontos, 0) ELSE 0 END)::int AS pontos
-    FROM jogo_participantes p
-    LEFT JOIN (SELECT participante_id, SUM(pontos) AS pts,
-        COUNT(*) FILTER (WHERE correta) AS acertos,
-        SUM(tempo_ms) FILTER (WHERE correta) AS tempo_acertos
-      FROM jogo_respostas_quiz GROUP BY participante_id) q ON q.participante_id = p.id
-    LEFT JOIN jogo_respostas_desafio d ON d.participante_id = p.id
-    ORDER BY pontos DESC, acertos DESC, tempo_acertos ASC, p.criado_em ASC
-    LIMIT ${limite}`;
+// desempate: mais acertos e, depois, menor tempo somado nas respostas certas
+function ranking(t, incluirDesafio) {
+  const linhas = Object.keys(t.part).map((id) => {
+    const p = t.part[id] || {};
+    let quiz = 0, acertos = 0, tempo = 0;
+    t.quiz.forEach((h) => {
+      const r = h[id];
+      if (!r) return;
+      quiz += r.pontos || 0;
+      if (r.correta) { acertos++; tempo += r.tempo || 0; }
+    });
+    const d = incluirDesafio && t.des[id] ? t.des[id].pontos || 0 : 0;
+    return { id, nome: p.nome, codigo: p.codigo, matricula: p.matricula, visitante: !!p.visitante, criado: p.criado || 0,
+      acertos, tempo_acertos: tempo, quiz, desafio: d, pontos: quiz + d };
+  });
+  linhas.sort((a, b) => b.pontos - a.pontos || b.acertos - a.acertos || a.tempo_acertos - b.tempo_acertos || a.criado - b.criado);
+  return linhas;
 }
 
 function desafioTerminou(e) {
@@ -389,55 +501,56 @@ function perguntaPublica(i, revelado) {
   return out;
 }
 
-async function estado(s, res) {
-  const e = await lerEstado(s);
+function distribuicaoDe(h) {
+  const dist = { A: 0, B: 0, C: 0, D: 0 };
+  let total = 0;
+  Object.values(h || {}).forEach((r) => { if (r && dist[r.opcao] != null) { dist[r.opcao]++; total++; } });
+  return { dist, total };
+}
+
+function mensagemPublica(m, t) {
+  const p = t.part[m.pid] || {};
+  return { id: m.id, tipo: m.tipo, texto: m.texto, status: m.status, nome: m.nome || p.nome || "", codigo: m.codigo || p.codigo || "" };
+}
+
+async function estado(res) {
+  const t = await carregaTudo();
+  const e = t.e;
   const terminou = desafioTerminou(e);
-  const [cont, emojis, mural, top] = await Promise.all([
-    s`SELECT (SELECT COUNT(*)::int FROM jogo_participantes) AS n,
-             (SELECT COUNT(*)::int FROM jogo_mensagens WHERE tipo <> 'emoji' AND status = 'pendente') AS pendentes,
-             (SELECT COUNT(*)::int FROM jogo_mensagens WHERE tipo = 'emoji') AS reacoes`,
-    s`SELECT id, texto FROM jogo_mensagens WHERE tipo = 'emoji' AND criado_em > now() - interval '8 seconds' ORDER BY id DESC LIMIT 60`,
-    s`SELECT m.id, m.tipo, m.texto, m.status, p.nome FROM jogo_mensagens m JOIN jogo_participantes p ON p.id = m.participante_id
-      WHERE m.tipo <> 'emoji' AND m.status IN ('aprovada', 'destaque') ORDER BY m.id DESC LIMIT 30`,
-    ranking(s, 10, terminou),
-  ]);
+  const msgs = t.msg.slice().sort((a, b) => b.id - a.id);
   const out = {
     ok: true,
     agora: e.agora,
     etapa: e.etapa,
     pausado: e.pausado_em, // relógios congelados neste instante (null = rodando)
-    participantes: cont[0].n,
-    aguardando: cont[0].pendentes,
-    reacoes: cont[0].reacoes,
-    emojis,
-    mural,
-    ranking: top.filter((r) => r.pontos > 0).map((r) => ({ nome: r.nome, codigo: r.codigo, pontos: r.pontos })),
+    participantes: Object.keys(t.part).length,
+    aguardando: msgs.filter((m) => m.status === "pendente").length,
+    reacoes: t.reacoes,
+    emojis: t.emo.filter((x) => x.t > e.agora - 8000).map((x) => ({ id: x.id, texto: x.texto })),
+    mural: msgs.filter((m) => m.status === "aprovada" || m.status === "destaque").slice(0, 30).map((m) => mensagemPublica(m, t)),
+    ranking: ranking(t, terminou).slice(0, 10).filter((r) => r.pontos > 0).map((r) => ({ nome: r.nome, codigo: r.codigo, pontos: r.pontos })),
     quiz: null,
     desafio: null,
   };
   if (e.pergunta >= 0 && PERGUNTAS[e.pergunta]) {
-    const resp = await s`SELECT opcao, COUNT(*)::int AS n FROM jogo_respostas_quiz WHERE pergunta = ${e.pergunta} GROUP BY opcao`;
-    const dist = { A: 0, B: 0, C: 0, D: 0 };
-    let total = 0;
-    resp.forEach((r) => { dist[r.opcao] = r.n; total += r.n; });
+    const d = distribuicaoDe(t.quiz[e.pergunta]);
     out.quiz = {
       indice: e.pergunta,
       total: PERGUNTAS.length,
       inicio: e.pergunta_inicio,
       limite: TEMPO_PERGUNTA,
       revelado: e.revelado,
-      respondidos: total,
+      respondidos: d.total,
       pergunta: perguntaPublica(e.pergunta, e.revelado),
-      distribuicao: e.revelado ? dist : null,
+      distribuicao: e.revelado ? d.dist : null,
     };
   }
   if (e.desafio_inicio != null) {
-    const env = await s`SELECT COUNT(*)::int AS n FROM jogo_respostas_desafio`;
     out.desafio = {
       inicio: e.desafio_inicio,
       fim: e.desafio_fim,
       terminou,
-      enviados: env[0].n,
+      enviados: Object.keys(t.des).length,
       titulo: DESAFIO.titulo,
       enunciado: DESAFIO.enunciado,
       itens: DESAFIO.itens,
@@ -451,36 +564,37 @@ async function estado(s, res) {
   res.status(200).json(out);
 }
 
-async function participante(s, id) {
-  const r = await s`SELECT id, nome, codigo, matricula, visitante FROM jogo_participantes WHERE id = ${id}`;
-  return r[0] || null;
+async function participante(id) {
+  return json(await cmd(["HGET", K.part, id]), null);
 }
 
-async function meu(s, req, res) {
+async function meu(req, res) {
   const id = texto(req.query.id, 64);
-  const p = await participante(s, id);
+  const cmds = [["HGET", K.part, id], ["GET", K.estado], ["HGET", K.des, id]];
+  PERGUNTAS.forEach((_, i) => cmds.push(["HGET", K.q(i), id]));
+  const r = await pipe(cmds);
+  const p = json(r[0], null);
   if (!p) return erro(res, 404, "Participante não encontrado. Entre de novo no jogo.");
-  const e = await lerEstado(s);
+  const e = Object.assign({}, ESTADO_INICIAL, json(r[1], {}));
+  e.agora = Date.now();
   const terminou = desafioTerminou(e);
-  const resp = await s`SELECT pergunta, opcao, correta, pontos FROM jogo_respostas_quiz WHERE participante_id = ${id} ORDER BY pergunta`;
   const respostas = {};
   let pontosQuiz = 0;
-  resp.forEach((r) => {
-    const conhecida = r.pergunta < e.pergunta || (r.pergunta === e.pergunta && e.revelado) || e.etapa !== "quiz";
-    respostas[r.pergunta] = { opcao: r.opcao, correta: conhecida ? r.correta : null, pontos: conhecida ? r.pontos : null };
-    if (conhecida) pontosQuiz += r.pontos;
+  r.slice(3).forEach((x, i) => {
+    const q = json(x, null);
+    if (!q) return;
+    const conhecida = i < e.pergunta || (i === e.pergunta && e.revelado) || e.etapa !== "quiz";
+    respostas[i] = { opcao: q.opcao, correta: conhecida ? q.correta : null, pontos: conhecida ? q.pontos : null };
+    if (conhecida) pontosQuiz += q.pontos || 0;
   });
-  const d = await s`SELECT valor, justificativa, pontos, envios, (extract(epoch FROM atualizado_em) * 1000)::float8 AS em
-    FROM jogo_respostas_desafio WHERE participante_id = ${id}`;
-  const desafio = d[0]
-    ? { valor: d[0].valor, justificativa: d[0].justificativa, envios: d[0].envios, em: d[0].em, pontos: terminou ? d[0].pontos : null }
-    : null;
+  const d0 = json(r[2], null);
+  const desafio = d0 ? { valor: d0.valor, justificativa: d0.justificativa, envios: d0.envios, em: d0.em, pontos: terminou ? d0.pontos : null } : null;
   const total = pontosQuiz + (terminou && desafio ? desafio.pontos : 0);
   res.setHeader("Cache-Control", "no-store");
   res.status(200).json({ ok: true, participante: { nome: p.nome, codigo: p.codigo }, respostas, pontosQuiz, desafio, total });
 }
 
-async function entrar(s, req, res) {
+async function entrar(req, res) {
   const b = corpo(req);
   const id = texto(b.id, 64);
   const nome = texto(b.nome, 60);
@@ -490,45 +604,53 @@ async function entrar(s, req, res) {
   if (nome.length < 2) return erro(res, 400, "Digite seu nome.");
   if (!visitante && matricula.length < 5) return erro(res, 400, "Digite sua matrícula do IFRN ou marque que é visitante.");
   const codigo = "IES-" + id.replace(/-/g, "").slice(0, 6).toUpperCase();
-  await s`INSERT INTO jogo_participantes (id, codigo, nome, matricula, visitante)
-    VALUES (${id}, ${codigo}, ${nome}, ${matricula}, ${visitante})
-    ON CONFLICT (id) DO UPDATE SET nome = EXCLUDED.nome, matricula = EXCLUDED.matricula, visitante = EXCLUDED.visitante`;
+  const antes = await participante(id);
+  const p = { codigo, nome, matricula, visitante, criado: antes && antes.criado ? antes.criado : Date.now() };
+  await cmd(["HSET", K.part, id, JSON.stringify(p)]);
   res.status(200).json({ ok: true, codigo });
 }
 
-async function mensagem(s, req, res) {
+async function mensagem(req, res) {
   const b = corpo(req);
   const id = texto(b.id, 64);
   const tipo = texto(b.tipo, 20);
-  if (!(await participante(s, id))) return erro(res, 404, "Entre no jogo antes de interagir.");
+  const p = await participante(id);
+  if (!p) return erro(res, 404, "Entre no jogo antes de interagir.");
   if (tipo === "emoji") {
     const e = texto(b.texto, 8);
     if (EMOJIS.indexOf(e) < 0) return erro(res, 400, "Emoji não permitido.");
-    const rec = await s`SELECT COUNT(*)::int AS n FROM jogo_mensagens WHERE participante_id = ${id} AND tipo = 'emoji' AND criado_em > now() - interval '5 seconds'`;
-    if (rec[0].n >= 6) return res.status(200).json({ ok: true, ignorado: true });
-    await s`INSERT INTO jogo_mensagens (participante_id, tipo, texto, status) VALUES (${id}, 'emoji', ${e}, 'aprovada')`;
+    const livre = await cmd(["SET", K.limite("emo", id), "1", "NX", "PX", 500]);
+    if (!livre) return res.status(200).json({ ok: true, ignorado: true });
+    const n = await cmd(["INCR", K.seq]);
+    await pipe([
+      ["LPUSH", K.emo, JSON.stringify({ id: n, texto: e, t: Date.now() })],
+      ["LTRIM", K.emo, 0, 99],
+      ["INCR", K.reacoes],
+    ]);
     return res.status(200).json({ ok: true });
   }
   if (tipo !== "comentario" && tipo !== "pergunta") return erro(res, 400, "Tipo inválido.");
   const t = texto(b.texto, 280);
   if (t.length < 2) return erro(res, 400, "Escreva alguma coisa.");
-  const rec = await s`SELECT COUNT(*)::int AS n FROM jogo_mensagens WHERE participante_id = ${id} AND tipo <> 'emoji' AND criado_em > now() - interval '10 seconds'`;
-  if (rec[0].n >= 1) return erro(res, 429, "Calma! Espere alguns segundos para mandar outra.");
+  const livre = await cmd(["SET", K.limite("msg", id), "1", "NX", "PX", 10000]);
+  if (!livre) return erro(res, 429, "Calma! Espere alguns segundos para mandar outra.");
   // comentários podem ir direto ao telão; perguntas sempre passam pela seleção da organização
-  const e = await lerEstado(s);
+  const e = await lerEstado();
   const status = tipo === "comentario" && e.auto_comentarios ? "aprovada" : "pendente";
-  await s`INSERT INTO jogo_mensagens (participante_id, tipo, texto, status) VALUES (${id}, ${tipo}, ${t}, ${status})`;
+  const n = await cmd(["INCR", K.seq]);
+  const m = { id: n, pid: id, nome: p.nome, codigo: p.codigo, tipo, texto: t, status, t: Date.now() };
+  await cmd(["HSET", K.msg, String(n), JSON.stringify(m)]);
   res.status(200).json({ ok: true, moderacao: status === "pendente" });
 }
 
-async function responder(s, req, res) {
+async function responder(req, res) {
   const b = corpo(req);
   const id = texto(b.id, 64);
   const indice = Number(b.pergunta);
   const opcao = texto(b.opcao, 1).toUpperCase();
-  if (!(await participante(s, id))) return erro(res, 404, "Entre no jogo antes de responder.");
+  if (!(await participante(id))) return erro(res, 404, "Entre no jogo antes de responder.");
   if (["A", "B", "C", "D"].indexOf(opcao) < 0) return erro(res, 400, "Alternativa inválida.");
-  const e = await lerEstado(s);
+  const e = await lerEstado();
   if (e.etapa !== "quiz" || e.pergunta !== indice || e.revelado) return erro(res, 409, "Essa pergunta já foi encerrada.");
   if (e.pausado_em != null) return erro(res, 409, "O jogo está pausado. Responda quando voltar.");
   const limiteMs = TEMPO_PERGUNTA * 1000;
@@ -537,20 +659,19 @@ async function responder(s, req, res) {
   const tempo = Math.min(decorrido, limiteMs);
   const correta = PERGUNTAS[indice].correta === opcao;
   const pontos = correta ? Math.round(500 + 500 * (1 - tempo / limiteMs)) : 0;
-  const r = await s`INSERT INTO jogo_respostas_quiz (participante_id, pergunta, opcao, correta, tempo_ms, pontos)
-    VALUES (${id}, ${indice}, ${opcao}, ${correta}, ${Math.round(tempo)}, ${pontos})
-    ON CONFLICT (participante_id, pergunta) DO NOTHING RETURNING pergunta`;
-  res.status(200).json({ ok: true, registrada: r.length > 0, repetida: r.length === 0 });
+  // HSETNX: vale só a primeira resposta de cada pessoa
+  const novo = await cmd(["HSETNX", K.q(indice), id, JSON.stringify({ opcao, correta, tempo: Math.round(tempo), pontos, t: e.agora })]);
+  res.status(200).json({ ok: true, registrada: Number(novo) === 1, repetida: Number(novo) !== 1 });
 }
 
-async function desafio(s, req, res) {
+async function desafio(req, res) {
   const b = corpo(req);
   const id = texto(b.id, 64);
-  if (!(await participante(s, id))) return erro(res, 404, "Entre no jogo antes de responder.");
+  if (!(await participante(id))) return erro(res, 404, "Entre no jogo antes de responder.");
   const valor = Number(b.valor);
   if (!isFinite(valor)) return erro(res, 400, "Digite um número na resposta final.");
   const justificativa = String(b.justificativa == null ? "" : b.justificativa).trim().slice(0, 3000);
-  const e = await lerEstado(s);
+  const e = await lerEstado();
   if (e.etapa !== "desafio" || e.desafio_inicio == null) return erro(res, 409, "O desafio não está aberto.");
   if (e.agora > e.desafio_fim + 10000) return erro(res, 409, "O tempo do desafio acabou.");
   if (e.pausado_em != null) return erro(res, 409, "O desafio está pausado. Envie quando voltar.");
@@ -563,54 +684,50 @@ async function desafio(s, req, res) {
     const restante = Math.max(0, e.desafio_fim - e.agora) / (e.desafio_fim - e.desafio_inicio);
     pontos += Math.round(DESAFIO.bonusMax * restante);
   }
-  await s`INSERT INTO jogo_respostas_desafio (participante_id, valor, justificativa, erro, pontos)
-    VALUES (${id}, ${valor}, ${justificativa}, ${erroRel}, ${pontos})
-    ON CONFLICT (participante_id) DO UPDATE SET valor = EXCLUDED.valor, justificativa = EXCLUDED.justificativa,
-      erro = EXCLUDED.erro, pontos = EXCLUDED.pontos, envios = jogo_respostas_desafio.envios + 1, atualizado_em = now()`;
+  const antes = json(await cmd(["HGET", K.des, id]), null);
+  const reg = { valor, justificativa, erro: erroRel, pontos, envios: antes ? (antes.envios || 1) + 1 : 1, em: e.agora };
+  await cmd(["HSET", K.des, id, JSON.stringify(reg)]);
   res.status(200).json({ ok: true });
 }
 
-// Login do painel: usuário "admin". A senha pode ser trocada pela variável ADMIN_KEY na Vercel.
+// Login do painel: usuário "admin" e senha "#iesday2026" (ADMIN_KEY na Vercel vira uma senha extra, se existir)
 const ADMIN_USUARIO = "admin";
 const ADMIN_SENHAS = ["#iesday2026", process.env.ADMIN_KEY].filter(Boolean);
 function autorizado(req) {
   const usuario = String(req.headers["x-usuario"] || "").trim().toLowerCase();
   let senha = String(req.headers["x-chave"] || "");
   try { senha = decodeURIComponent(senha); } catch (e) {}
+  senha = senha.trim();
   return usuario === ADMIN_USUARIO && ADMIN_SENHAS.indexOf(senha) >= 0;
 }
 
-async function adminDados(s, res) {
-  const e = await lerEstado(s);
-  const [pendentes, recentes, resp, top, cont, dist] = await Promise.all([
-    s`SELECT m.id, m.tipo, m.texto, m.status, p.nome, p.codigo FROM jogo_mensagens m JOIN jogo_participantes p ON p.id = m.participante_id
-      WHERE m.tipo <> 'emoji' AND m.status = 'pendente' ORDER BY m.id ASC LIMIT 100`,
-    s`SELECT m.id, m.tipo, m.texto, m.status, p.nome, p.codigo FROM jogo_mensagens m JOIN jogo_participantes p ON p.id = m.participante_id
-      WHERE m.tipo <> 'emoji' AND m.status <> 'pendente' ORDER BY m.id DESC LIMIT 60`,
-    s`SELECT p.nome, p.codigo, p.matricula, p.visitante, d.valor, d.justificativa, d.erro, d.pontos, d.envios,
-        (extract(epoch FROM d.atualizado_em) * 1000)::float8 AS em
-      FROM jogo_respostas_desafio d JOIN jogo_participantes p ON p.id = d.participante_id ORDER BY d.erro ASC, d.atualizado_em ASC`,
-    ranking(s, 50, true),
-    s`SELECT (SELECT COUNT(*)::int FROM jogo_participantes) AS participantes,
-             (SELECT COUNT(*)::int FROM jogo_mensagens WHERE tipo = 'emoji') AS emojis`,
-    s`SELECT opcao, COUNT(*)::int AS n FROM jogo_respostas_quiz WHERE pergunta = ${e.pergunta} GROUP BY opcao`,
-  ]);
-  const distribuicao = { A: 0, B: 0, C: 0, D: 0 };
-  dist.forEach((r) => { distribuicao[r.opcao] = r.n; });
+async function adminDados(res) {
+  const t = await carregaTudo();
+  const e = t.e;
+  const msgs = t.msg.filter((m) => m.tipo !== "emoji");
+  const pendentes = msgs.filter((m) => m.status === "pendente").sort((a, b) => a.id - b.id).slice(0, 100).map((m) => mensagemPublica(m, t));
+  const recentes = msgs.filter((m) => m.status !== "pendente").sort((a, b) => b.id - a.id).slice(0, 60).map((m) => mensagemPublica(m, t));
+  const desafioRespostas = Object.keys(t.des).map((id) => {
+    const d = t.des[id] || {};
+    const p = t.part[id] || {};
+    return { nome: p.nome, codigo: p.codigo, matricula: p.matricula, visitante: !!p.visitante, valor: d.valor, justificativa: d.justificativa,
+      erro: d.erro, pontos: d.pontos, envios: d.envios, em: d.em };
+  }).sort((a, b) => a.erro - b.erro || a.em - b.em);
+  const dist = e.pergunta >= 0 ? distribuicaoDe(t.quiz[e.pergunta]).dist : { A: 0, B: 0, C: 0, D: 0 };
   res.setHeader("Cache-Control", "no-store");
   res.status(200).json({
     ok: true,
     agora: e.agora,
     estado: e,
     perguntas: PERGUNTAS.map((p, i) => Object.assign({ indice: i }, p)),
-    distribuicao,
+    distribuicao: dist,
     tempo: TEMPO_PERGUNTA,
     desafio: { duracaoMin: DESAFIO.duracaoMin, referencia: DESAFIO.referencia },
     pendentes,
     recentes,
-    desafioRespostas: resp,
-    ranking: top,
-    contagem: cont[0],
+    desafioRespostas,
+    ranking: ranking(t, true).slice(0, 50),
+    contagem: { participantes: Object.keys(t.part).length, emojis: t.reacoes },
   });
 }
 
@@ -620,14 +737,11 @@ function csv(linhas) {
     .join("\r\n");
 }
 
-async function exportar(s, res) {
-  const top = await ranking(s, 100000, true);
-  const d = await s`SELECT participante_id, valor, justificativa, envios FROM jogo_respostas_desafio`;
-  const porId = {};
-  d.forEach((r) => { porId[r.participante_id] = r; });
+async function exportar(res) {
+  const t = await carregaTudo();
   const linhas = [["posicao", "codigo", "nome", "matricula", "visitante", "acertos_quiz", "tempo_acertos_s", "pontos_quiz", "pontos_desafio", "total", "valor_desafio", "justificativa_desafio"]];
-  top.forEach((r, i) => {
-    const x = porId[r.id] || {};
+  ranking(t, true).forEach((r, i) => {
+    const x = t.des[r.id] || {};
     linhas.push([i + 1, r.codigo, r.nome, r.matricula, r.visitante ? "sim" : "não", r.acertos, (r.tempo_acertos / 1000).toFixed(1).replace(".", ","), r.quiz, r.desafio, r.pontos, x.valor, x.justificativa]);
   });
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
@@ -635,59 +749,55 @@ async function exportar(s, res) {
   res.status(200).send("﻿" + csv(linhas));
 }
 
-async function adminAcao(s, req, res) {
+async function adminAcao(req, res) {
   const b = corpo(req);
   const op = texto(b.op, 30);
+  const agora = Date.now();
   if (op === "etapa") {
     const etapa = texto(b.etapa, 20);
     if (ETAPAS.indexOf(etapa) < 0) return erro(res, 400, "Etapa inválida.");
-    await s`UPDATE jogo_estado SET etapa = ${etapa}, atualizado_em = now() WHERE id = 1`;
+    await gravaEstado({ etapa });
   } else if (op === "abrir_pergunta") {
     const i = Number(b.indice);
     if (!PERGUNTAS[i]) return erro(res, 400, "Pergunta inexistente.");
-    await s`UPDATE jogo_estado SET etapa = 'quiz', pergunta = ${i}, pergunta_inicio = now(), revelado = FALSE, pausado_em = NULL, atualizado_em = now() WHERE id = 1`;
+    await gravaEstado({ etapa: "quiz", pergunta: i, pergunta_inicio: agora, revelado: false, pausado_em: null });
   } else if (op === "revelar") {
-    await s`UPDATE jogo_estado SET revelado = TRUE, pausado_em = NULL, atualizado_em = now() WHERE id = 1`;
+    await gravaEstado({ revelado: true, pausado_em: null });
   } else if (op === "pausar") {
-    await s`UPDATE jogo_estado SET pausado_em = now(), atualizado_em = now() WHERE id = 1 AND pausado_em IS NULL`;
+    const e = await lerEstado();
+    if (e.pausado_em == null) await gravaEstado({ pausado_em: agora });
   } else if (op === "retomar") {
     // empurra os relógios para a frente pelo tempo em pausa: ninguém perde segundos
-    await s`UPDATE jogo_estado SET
-      pergunta_inicio = CASE WHEN etapa = 'quiz' THEN pergunta_inicio + (now() - pausado_em) ELSE pergunta_inicio END,
-      desafio_inicio = CASE WHEN etapa = 'desafio' THEN desafio_inicio + (now() - pausado_em) ELSE desafio_inicio END,
-      desafio_fim = CASE WHEN etapa = 'desafio' THEN desafio_fim + (now() - pausado_em) ELSE desafio_fim END,
-      pausado_em = NULL, atualizado_em = now() WHERE id = 1 AND pausado_em IS NOT NULL`;
+    const e = await lerEstado();
+    if (e.pausado_em != null) {
+      const d = agora - e.pausado_em;
+      const m = { pausado_em: null };
+      if (e.etapa === "quiz" && e.pergunta_inicio != null) m.pergunta_inicio = e.pergunta_inicio + d;
+      if (e.etapa === "desafio" && e.desafio_inicio != null) { m.desafio_inicio = e.desafio_inicio + d; m.desafio_fim = e.desafio_fim + d; }
+      await gravaEstado(m);
+    }
   } else if (op === "iniciar_desafio") {
-    const min = DESAFIO.duracaoMin;
-    await s`UPDATE jogo_estado SET etapa = 'desafio', desafio_inicio = now(), desafio_fim = now() + make_interval(mins => ${min}), pausado_em = NULL, atualizado_em = now() WHERE id = 1`;
+    await gravaEstado({ etapa: "desafio", desafio_inicio: agora, desafio_fim: agora + DESAFIO.duracaoMin * 60000, pausado_em: null });
   } else if (op === "mais_tempo") {
-    await s`UPDATE jogo_estado SET desafio_fim = desafio_fim + interval '5 minutes', atualizado_em = now() WHERE id = 1 AND desafio_fim IS NOT NULL`;
+    const e = await lerEstado();
+    if (e.desafio_fim != null) await gravaEstado({ desafio_fim: e.desafio_fim + 5 * 60000 });
   } else if (op === "encerrar_desafio") {
-    await s`UPDATE jogo_estado SET desafio_fim = now(), pausado_em = NULL, atualizado_em = now() WHERE id = 1 AND desafio_fim IS NOT NULL`;
+    const e = await lerEstado();
+    if (e.desafio_fim != null) await gravaEstado({ desafio_fim: agora, pausado_em: null });
   } else if (op === "auto_comentarios") {
-    await s`UPDATE jogo_estado SET auto_comentarios = ${!!b.valor}, atualizado_em = now() WHERE id = 1`;
+    await gravaEstado({ auto_comentarios: !!b.valor });
   } else if (op === "moderar") {
     const status = texto(b.status, 20);
     if (STATUS.indexOf(status) < 0) return erro(res, 400, "Status inválido.");
-    await s`UPDATE jogo_mensagens SET status = ${status} WHERE id = ${Number(b.id)}`;
-  } else if (op === "destravar") {
-    // Sessões presas no banco: esperando lock nas tabelas do jogo, ou transação parada há mais de 1 min
-    // (ela segura a tabela e trava a fila). Sem confirmar, só lista; com confirmar, encerra essas sessões.
-    const presas = await s`SELECT pid, state, wait_event_type, left(query, 100) AS query,
-        round(extract(epoch FROM now() - coalesce(xact_start, query_start)))::int AS segundos,
-        (CASE WHEN ${b.confirmar === "DESTRAVAR"} THEN pg_terminate_backend(pid) ELSE FALSE END) AS encerrada
-      FROM pg_stat_activity
-      WHERE datname = current_database() AND pid <> pg_backend_pid() AND (
-        (wait_event_type = 'Lock' AND query ILIKE '%jogo\\_%')
-        OR (state LIKE 'idle in transaction%' AND now() - state_change > interval '1 minute'))`;
-    return res.status(200).json({ ok: true, presas });
+    const idm = String(Number(b.id));
+    const m = json(await cmd(["HGET", K.msg, idm]), null);
+    if (!m) return erro(res, 404, "Mensagem não encontrada.");
+    m.status = status;
+    await cmd(["HSET", K.msg, idm, JSON.stringify(m)]);
   } else if (op === "zerar") {
     if (b.confirmar !== "ZERAR") return erro(res, 400, "Digite ZERAR para confirmar.");
-    await s`DELETE FROM jogo_respostas_desafio`;
-    await s`DELETE FROM jogo_respostas_quiz`;
-    await s`DELETE FROM jogo_mensagens`;
-    await s`DELETE FROM jogo_participantes`;
-    await s`UPDATE jogo_estado SET etapa = 'interacao', pergunta = -1, pergunta_inicio = NULL, revelado = FALSE, desafio_inicio = NULL, desafio_fim = NULL, pausado_em = NULL, atualizado_em = now() WHERE id = 1`;
+    const chaves = [K.estado, K.part, K.msg, K.seq, K.emo, K.reacoes, K.des].concat(PERGUNTAS.map((_, i) => K.q(i)));
+    await cmd(["DEL"].concat(chaves));
   } else {
     return erro(res, 400, "Operação desconhecida.");
   }
@@ -697,27 +807,32 @@ async function adminAcao(s, req, res) {
 module.exports = async function handler(req, res) {
   const acao = String((req.query && req.query.acao) || "");
   try {
-    const s = await prepara();
     if (req.method === "GET") {
       if (acao === "saude") {
-        const r = await s`SELECT COUNT(*)::int AS n FROM jogo_participantes`;
+        const cfg = configuracao();
+        const n = await cmd(["HLEN", K.part]);
         res.setHeader("Cache-Control", "no-store");
-        return res.status(200).json({ ok: true, banco: "conectado", participantes: r[0].n, adminConfigurado: true });
+        return res.status(200).json({
+          ok: true,
+          banco: cfg.tipo === "memoria" ? "memoria" : "conectado",
+          armazenamento: cfg.tipo === "rest" ? "Redis da Vercel (HTTPS)" : cfg.tipo === "tcp" ? "Redis da Vercel (direto)" : "memória temporária: crie o Redis na aba Storage da Vercel",
+          participantes: Number(n || 0),
+        });
       }
-      if (acao === "estado") return await estado(s, res);
-      if (acao === "meu") return await meu(s, req, res);
+      if (acao === "estado") return await estado(res);
+      if (acao === "meu") return await meu(req, res);
       if (acao === "admin" || acao === "exportar") {
         if (!autorizado(req)) return erro(res, 401, "Usuário ou senha incorretos.");
-        return acao === "admin" ? await adminDados(s, res) : await exportar(s, res);
+        return acao === "admin" ? await adminDados(res) : await exportar(res);
       }
     } else if (req.method === "POST") {
-      if (acao === "entrar") return await entrar(s, req, res);
-      if (acao === "mensagem") return await mensagem(s, req, res);
-      if (acao === "responder") return await responder(s, req, res);
-      if (acao === "desafio") return await desafio(s, req, res);
+      if (acao === "entrar") return await entrar(req, res);
+      if (acao === "mensagem") return await mensagem(req, res);
+      if (acao === "responder") return await responder(req, res);
+      if (acao === "desafio") return await desafio(req, res);
       if (acao === "admin") {
         if (!autorizado(req)) return erro(res, 401, "Usuário ou senha incorretos.");
-        return await adminAcao(s, req, res);
+        return await adminAcao(req, res);
       }
     }
     erro(res, 404, "Ação desconhecida.");
@@ -726,5 +841,4 @@ module.exports = async function handler(req, res) {
     erro(res, 500, e && e.message ? e.message : "Erro no servidor.");
   }
 };
-
-module.exports.arrumaUrl = arrumaUrl;
+module.exports._pipe = pipe; // usado só nos testes

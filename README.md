@@ -88,19 +88,18 @@ Três páginas novas, todas no mesmo site:
 | `/admin` | organização (usuário `admin`) | barra fixa com Iniciar jogo, Pausar/Continuar, Mostrar resposta e Próxima (que segue para o desafio e o resultado); pergunta atual com gabarito e votos ao vivo, lista das 10 perguntas, moderação das perguntas do público, desafio, ranking e planilha |
 
 Arquivos do jogo: `jogo.html`, `jogo.js`, `telao.html`, `telao.js`, `admin.html`, `admin.js`, `jogo-comum.js`, `jogo.css`, `qrcode.js`,
-`api/jogo.js` (a API inteira, num arquivo só, dentro da pasta `api`) e `package.json`.
+`api/jogo.js` (a API inteira, num arquivo só, sem dependências, dentro da pasta `api`).
 
 ### Configurar na Vercel (uma vez)
 
-1. No Supabase: botão **Connect** (no topo do projeto) → **Transaction pooler** (porta 6543). Copie a URI e troque `[YOUR-PASSWORD]` pela senha do banco. Não use a "Direct connection" (`db.xxx.supabase.co:5432`): ela só funciona por IPv6 e a Vercel não alcança. Senha com `?`, `#` ou `@` pode ser colada como está.
-2. Na Vercel: **Project → Settings → Environment Variables** e crie:
-   - `DATABASE_URL` = a URI do passo 1
-   - `ADMIN_KEY` (opcional) = uma senha extra para o painel. Sem ela, o login é usuário `admin` e senha `#iesday2026`.
-3. Faça um novo deploy (Deployments → Redeploy). As tabelas são criadas sozinhas no primeiro acesso.
-4. Teste: abra `/api/jogo?acao=saude`. Tem que aparecer `"banco":"conectado"`.
-5. Abra `/admin`, entre com usuário `admin` e senha `#iesday2026`, faça um teste com o celular e depois use **Zerar tudo** antes do evento.
+Os dados do jogo ficam num Redis criado dentro da própria Vercel. Não precisa de Supabase nem de senha de banco.
 
-A chave "publishable" do Supabase não é usada: o site fala com o banco só pelo servidor, e as tabelas ficam com RLS ligado para ninguém mexer nelas direto pela API pública.
+1. No projeto da Vercel, abra a aba **Storage** → **Create Database** → **Upstash for Redis** (plano Free) → escolha a região **Washington, D.C. (iad1)** → **Create**.
+2. Na tela seguinte, clique em **Connect Project**, escolha o projeto `ies-day` e confirme. A Vercel cria sozinha as variáveis do banco.
+3. Em **Settings → Environment Variables**, apague a `DATABASE_URL` antiga (do Supabase), se ainda existir.
+4. **Deployments → ⋯ → Redeploy**.
+5. Teste: abra `/api/jogo?acao=saude`. Tem que aparecer `"banco":"conectado"`. Se aparecer `"memoria"`, o Redis ainda não foi ligado ao projeto (o jogo funciona, mas os dados podem sumir).
+6. Abra `/admin`, entre com usuário `admin` e senha `#iesday2026`, faça um teste com o celular e depois use **Zerar tudo** antes do evento.
 
 ### Pontuação
 
