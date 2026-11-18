@@ -171,13 +171,15 @@ const PERGUNTAS = [
 // ETAPA 2 · Desafio Sem Fronteiras (30 minutos, aceita respostas até o fim)
 const DESAFIO = {
   duracaoMin: 30,
-  titulo: "Desafio Sem Fronteiras: proteja a bateria do Seridó",
+  titulo: "Desafio Sem Fronteiras: salve a Energia Sem Fronteiras S.A.",
   enunciado: [
-    "Uma usina solar de 60 MWp no Seridó potiguar perde energia todo dia: perto do meio-dia, o ONS corta parte da geração porque a rede local não comporta tanta energia renovável. Para aproveitar essa sobra, a empresa instalou um BESS (sistema de armazenamento em baterias) de 20 MW / 80 MWh, que carrega com a energia que seria cortada e vende no pico da noite.",
-    "Seis meses depois, um invasor entrou pela VPN do fornecedor de manutenção, que não exigia autenticação multifator, e criptografou o servidor que controla a bateria (EMS/SCADA) com ransomware. O BESS ficou 12 dias parado, a usina voltou a perder energia e a empresa gastou caro para se recuperar.",
-    "A diretoria tem R$ 500 mil e pediu propostas à sua equipe. Não existe resposta única: vence a solução mais completa, viável e criativa.",
+    "A Energia Sem Fronteiras S.A. (empresa fictícia) tem uma usina solar de 60 MWp e um parque eólico de 40 MW no Seridó potiguar. Você acaba de ser contratado pela diretoria, que trouxe três problemas ao mesmo tempo:",
+    "1) Transição energética: perto do meio-dia, o ONS corta parte da geração porque a rede local não comporta tanta energia renovável. À noite, a indústria cliente ainda liga um gerador a diesel para cobrir o pico. O contrato exige energia 100% renovável até 2030, ou a empresa perde o cliente.",
+    "2) BESS: a bateria de 20 MW / 80 MWh, instalada há dois anos para guardar a energia cortada, já perdeu 15% da capacidade, mais rápido que o previsto. Ela esquenta no verão, faz ciclos profundos todo dia e só é usada para vender energia no horário de pico.",
+    "3) Cibersegurança: um invasor entrou pela VPN do fornecedor de manutenção, que não exigia autenticação multifator (MFA), e criptografou com ransomware o servidor que controla a bateria e as usinas (EMS/SCADA). Tudo ficou 12 dias parado. A rede de controle estava ligada à rede do escritório, e os inversores ainda usavam a senha de fábrica.",
+    "A diretoria tem R$ 2 milhões para este ano. Não existe resposta única: vence a solução mais completa, viável e criativa.",
   ],
-  pergunta: "Qual é a sua proposta? Diga o que faria para o ataque não se repetir e para a usina e a bateria aproveitarem melhor a energia, como gastaria o orçamento e por que sua solução é a melhor.",
+  pergunta: "Qual é a sua proposta? Resolva os três problemas, diga em que ordem agiria, como gastaria o orçamento e por que sua solução é a melhor para a empresa.",
   pontosMax: 2000, // a organização avalia cada proposta e dá de 0 a pontosMax
 };
 
