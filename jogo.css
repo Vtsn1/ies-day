@@ -604,3 +604,48 @@
 .a-login { max-width: 420px; width: 100%; justify-self: center; }
 .pg-admin .j-check { margin-top: 12px; font-size: 13.5px; }
 .pg-admin .j-check input { flex: none; }
+
+/* tela final com o vencedor definido pela organização */
+.t-campeao { display: grid; justify-items: center; text-align: center; gap: calc(0.8 * var(--u)); animation: entrar-baixo 0.9s var(--ease-saida) both; }
+.t-campeao-foto { position: relative; width: calc(19 * var(--u)); height: calc(19 * var(--u)); margin-bottom: calc(0.6 * var(--u)); }
+.t-campeao-foto img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: calc(0.35 * var(--u)) solid #ffb547;
+  box-shadow: 0 0 0 calc(0.7 * var(--u)) rgba(255, 181, 71, 0.18), 0 0 calc(4 * var(--u)) rgba(255, 181, 71, 0.5);
+  animation: brilho-campeao 2.4s ease-in-out infinite alternate;
+}
+.t-campeao-foto span {
+  position: absolute;
+  right: calc(-0.4 * var(--u));
+  bottom: calc(0.4 * var(--u));
+  width: calc(5 * var(--u));
+  height: calc(5 * var(--u));
+  display: grid;
+  place-items: center;
+  font-size: calc(2.6 * var(--u));
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffb547, #ff6a1f);
+  box-shadow: 0 calc(0.4 * var(--u)) calc(1.4 * var(--u)) rgba(255, 106, 31, 0.5);
+}
+.t-campeao-rotulo { font-family: var(--fonte-condensada); font-size: calc(1.7 * var(--u)); letter-spacing: 0.24em; text-transform: uppercase; color: #ffb547; }
+.t-campeao-nome {
+  font-family: var(--fonte-titulo);
+  font-weight: 900;
+  font-size: calc(4.4 * var(--u));
+  line-height: 1.05;
+  background: linear-gradient(180deg, #fff 30%, #ffd79a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.t-confete { position: fixed; inset: 0; z-index: 25; pointer-events: none; overflow: hidden; }
+.t-confete i { position: absolute; top: -3vh; width: calc(0.7 * var(--u)); height: calc(1.2 * var(--u)); border-radius: 2px; opacity: 0.9; animation: confete-telao 7s linear infinite; }
+@keyframes confete-telao { from { transform: translateY(0) rotate(0deg); } to { transform: translateY(108vh) rotate(720deg); } }
+@keyframes brilho-campeao { from { box-shadow: 0 0 0 calc(0.7 * var(--u)) rgba(255, 181, 71, 0.15), 0 0 calc(3 * var(--u)) rgba(255, 181, 71, 0.35); } to { box-shadow: 0 0 0 calc(0.9 * var(--u)) rgba(255, 181, 71, 0.3), 0 0 calc(6 * var(--u)) rgba(255, 181, 71, 0.7); } }
+@media (prefers-reduced-motion: reduce) { .t-confete { display: none; } }
+.t-oficial li span { display: grid; gap: calc(0.15 * var(--u)); white-space: normal; }
+.t-oficial li span small { color: var(--texto-2); font-size: calc(0.95 * var(--u)); font-variant-numeric: tabular-nums; }
+.t-oficial li strong { font-variant-numeric: tabular-nums; }

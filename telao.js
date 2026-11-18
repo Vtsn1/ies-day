@@ -141,7 +141,39 @@
     );
   }
 
+  // vencedor definido pela organização em dados.js: ocupa o lugar do pódio, com foto e confete
+  function telaCampeao(v) {
+    var cores = ["#ffb547", "#ff6a1f", "#67d4ff", "#9aa6ff", "#6ff0b4", "#ffffff"];
+    var confete = "";
+    for (var i = 0; i < 70; i++) {
+      confete += '<i style="left:' + (Math.random() * 100).toFixed(1) + "vw;background:" + cores[i % cores.length] +
+        ";animation-delay:-" + (Math.random() * 7).toFixed(2) + "s;animation-duration:" + (5 + Math.random() * 4).toFixed(2) + 's"></i>';
+    }
+    return (
+      '<div class="t-confete" aria-hidden="true">' + confete + "</div>" +
+      '<p class="t-rotulo">Resultado final</p>' +
+      '<h1 class="t-titulo">Quiz <em>Sem Fronteiras</em></h1>' +
+      '<div class="t-fim"><div class="t-campeao">' +
+      (v.foto ? '<div class="t-campeao-foto"><img src="' + J.esc(v.foto) + '" alt=""><span aria-hidden="true">🏆</span></div>' : "") +
+      '<p class="t-campeao-rotulo">Vencedor</p>' + // o título da tela já diz "Quiz Sem Fronteiras"
+      '<p class="t-campeao-nome">' + J.esc(v.nome) + "</p>" +
+      "</div>" + resultadoOficial(v) + "</div>"
+    );
+  }
+  // lista oficial da organização (dados.js); sem ela, usa o ranking do jogo
+  function resultadoOficial(v) {
+    var r = v.resultado || [];
+    if (!r.length) return ranking(8);
+    var pts = function (n) { return Number(n || 0).toLocaleString("pt-BR"); };
+    return '<ol class="t-rank t-oficial">' + r.slice(0, 8).map(function (x, i) {
+      return '<li style="animation-delay:' + i * 0.08 + 's"><b>' + (i + 1) + "º</b><span>" + J.esc(x.nome) +
+        "<small>Quiz " + pts(x.quiz) + " + Proposta " + pts(x.proposta) + "</small></span><strong>" + pts(x.final) + "</strong></li>";
+    }).join("") + "</ol>";
+  }
+
   function telaFim() {
+    var v = (window.EVENTO || {}).vencedor;
+    if (v && v.nome) return telaCampeao(v);
     var r = estado.ranking || [];
     var p = [r[1], r[0], r[2]];
     var pos = ["2º", "1º", "3º"];

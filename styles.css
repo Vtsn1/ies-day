@@ -1127,3 +1127,100 @@ body::before {
 @media (max-width: 860px) { .vivo-grade { grid-template-columns: 1fr; } .vivo-numeros { grid-template-columns: repeat(3, 1fr); } .vivo-emojis { grid-column: 1 / -1; } .vivo-numeros strong { font-size: 30px; } }
 @media (max-width: 560px) { .vivo-acoes { width: 100%; } .vivo-acoes .botao { flex: 1 1 auto; } }
 .vivo-emojis:empty { display: none; }
+
+/* ---------- vencedor ---------- */
+.vencedor-secao { padding-top: 56px; }
+.vencedor {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  padding: 40px 44px;
+  border-color: rgba(255, 181, 71, 0.55);
+  background:
+    radial-gradient(70% 140% at 0% 50%, rgba(255, 181, 71, 0.22), transparent 60%),
+    radial-gradient(60% 120% at 100% 100%, rgba(58, 70, 255, 0.35), transparent 60%),
+    var(--cartao-forte);
+  box-shadow: 0 0 60px rgba(255, 181, 71, 0.15);
+}
+.vencedor-foto { position: relative; flex: none; width: 180px; height: 180px; z-index: 1; }
+.vencedor-foto img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 4px solid #ffb547;
+  box-shadow: 0 0 0 8px rgba(255, 181, 71, 0.18), 0 0 50px rgba(255, 181, 71, 0.45);
+}
+.vencedor-trofeu {
+  position: absolute;
+  right: -6px;
+  bottom: 4px;
+  width: 58px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  font-size: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ffb547, #ff6a1f);
+  box-shadow: 0 6px 20px rgba(255, 106, 31, 0.5);
+}
+.vencedor-texto { position: relative; z-index: 1; min-width: 0; }
+.vencedor-texto .secao-rotulo { color: #ffb547; }
+.vencedor-texto .secao-rotulo::before { background: linear-gradient(90deg, #ff6a1f, #ffb547); }
+.vencedor h2 {
+  font-family: var(--fonte-titulo);
+  font-weight: 900;
+  font-size: clamp(34px, 5.4vw, 60px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  background: linear-gradient(180deg, #fff 30%, #ffd79a);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.vencedor-msg { margin-top: 12px; color: var(--texto-2); font-size: 17px; max-width: 52ch; }
+.vencedor-confete { position: absolute; inset: 0; pointer-events: none; }
+.vencedor-confete i {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 14px;
+  border-radius: 2px;
+  opacity: 0.85;
+  animation: confete-cai 6s linear infinite;
+}
+@keyframes confete-cai {
+  from { transform: translateY(0) rotate(0deg); }
+  to { transform: translateY(460px) rotate(540deg); }
+}
+@media (max-width: 640px) {
+  .vencedor { flex-direction: column; text-align: center; gap: 22px; padding: 32px 20px; }
+  .vencedor-foto { width: 150px; height: 150px; }
+  .vencedor-texto .secao-rotulo { justify-content: center; }
+  .vencedor-texto .secao-rotulo::before { display: none; }
+  .vencedor-msg { margin-left: auto; margin-right: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .vencedor-confete { display: none; } }
+
+/* resultado final */
+.resultado-final { margin-top: 16px; padding: 26px 28px; }
+.resultado-tabela { width: 100%; border-collapse: collapse; font-size: 16px; font-variant-numeric: tabular-nums; }
+.resultado-tabela th { text-align: left; color: var(--texto-2); font-weight: 600; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; padding: 0 12px 10px; }
+.resultado-tabela td { padding: 13px 12px; border-top: 1px solid var(--borda); }
+.resultado-tabela th:nth-child(n+3), .resultado-tabela td:nth-child(n+3) { text-align: right; }
+.resultado-tabela td:first-child { font-family: var(--fonte-titulo); font-weight: 800; color: var(--ciano); width: 80px; }
+.resultado-tabela tr.primeiro td { background: rgba(255, 181, 71, 0.1); }
+.resultado-tabela tr.primeiro td:first-child { color: #ffb547; border-radius: 10px 0 0 10px; }
+.resultado-tabela tr.primeiro td:last-child { border-radius: 0 10px 10px 0; }
+.resultado-tabela td b { font-family: var(--fonte-titulo); font-weight: 800; font-size: 17px; }
+.resultado-nota { margin-top: 14px; color: var(--texto-3); font-size: 13.5px; }
+@media (max-width: 640px) {
+  .resultado-final { padding: 20px 12px; }
+  .resultado-tabela { font-size: 14px; }
+  .resultado-tabela th, .resultado-tabela td { padding-left: 6px; padding-right: 6px; }
+  .resultado-tabela td:first-child { width: 40px; }
+  .resultado-tabela th:nth-child(3), .resultado-tabela td:nth-child(3),
+  .resultado-tabela th:nth-child(4), .resultado-tabela td:nth-child(4) { display: none; } /* no celular: posição, nome e final */
+}

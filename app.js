@@ -130,6 +130,43 @@
     if (tick()) setInterval(tick, 1000);
   })();
 
+  /* ---------- vencedor ---------- */
+  (function () {
+    var v = E.vencedor;
+    var secao = document.getElementById("vencedor");
+    if (!secao || !v || !v.nome) return;
+    var confete = "";
+    var cores = ["#ffb547", "#ff6a1f", "#67d4ff", "#9aa6ff", "#6ff0b4", "#ffffff"];
+    for (var i = 0; i < 26; i++) {
+      confete += '<i style="left:' + (Math.random() * 100).toFixed(1) + "%;background:" + cores[i % cores.length] +
+        ";animation-delay:-" + (Math.random() * 6).toFixed(2) + "s;animation-duration:" + (4.5 + Math.random() * 3).toFixed(2) + 's"></i>';
+    }
+    $("#vencedor-conteudo").innerHTML =
+      '<div class="vencedor-confete" aria-hidden="true">' + confete + "</div>" +
+      (v.foto ? '<div class="vencedor-foto"><img src="' + esc(v.foto) + '" alt="Foto de ' + esc(v.nome) + '"><span class="vencedor-trofeu" aria-hidden="true">🏆</span></div>' : "") +
+      '<div class="vencedor-texto">' +
+      '<p class="secao-rotulo">' + esc(v.titulo || "Vencedor") + "</p>" +
+      "<h2>" + esc(v.nome) + "</h2>" +
+      (v.mensagem ? '<p class="vencedor-msg">' + esc(v.mensagem) + "</p>" : "") +
+      "</div>";
+    var res = lista(v.resultado);
+    if (res.length) {
+      var pts = function (n) { return Number(n || 0).toLocaleString("pt-BR"); };
+      $("#vencedor-conteudo").insertAdjacentHTML("afterend",
+        '<div class="cartao resultado-final revela">' +
+        '<p class="secao-rotulo">Resultado final</p>' +
+        '<table class="resultado-tabela"><thead><tr><th>Posição</th><th>Nome</th><th>Quiz</th><th>Proposta</th><th>Final</th></tr></thead><tbody>' +
+        res.map(function (r, i) {
+          return '<tr class="' + (i === 0 ? "primeiro" : "") + '"><td>' + (i + 1) + 'º</td><td>' + esc(r.nome) + "</td><td>" + pts(r.quiz) +
+            "</td><td>" + pts(r.proposta) + "</td><td><b>" + pts(r.final) + "</b></td></tr>";
+        }).join("") +
+        "</tbody></table>" +
+        '<p class="resultado-nota">Final = pontos do Quiz Sem Fronteiras + soma das notas da proposta (etapa 2).</p>' +
+        "</div>");
+    }
+    secao.hidden = false;
+  })();
+
   /* ---------- sobre ---------- */
   if (lista(E.sobre).length) {
     $("#sobre-titulo").textContent = E.sobreTitulo || "";
