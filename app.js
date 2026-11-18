@@ -375,6 +375,68 @@
   }
 
   /* =========================================================
+     PAINEL AO VIVO: interações do jogo em tempo real
+     Aparece sozinho quando a API do jogo responde.
+     ========================================================= */
+  (function () {
+    var secao = document.getElementById("ao-vivo");
+    if (!secao) return;
+    var vistos = {};
+    var ETAPAS = { interacao: "Mural do público", quiz: "Quiz Sem Fronteiras", desafio: "Desafio Sem Fronteiras", encerrado: "Resultado final" };
+    function lista(r) {
+      return '<ol class="vivo-rank">' + r.slice(0, 5).map(function (x, i) {
+        return "<li><span>" + (i + 1) + "º " + esc(x.nome) + "</span><b>" + x.pontos + "</b></li>";
+      }).join("") + "</ol>";
+    }
+    function mural(d) {
+      var m = (d.mural || []).slice(0, 6);
+      if (!m.length) return '<p class="vivo-vazio">Ainda não há mensagens no mural. Entre no jogo e mande a sua!</p>';
+      return '<div class="vivo-lista">' + m.map(function (x) {
+        var rot = x.tipo === "pergunta" ? (x.status === "destaque" ? "Pergunta selecionada" : "Pergunta") : "Comentário";
+        return '<div class="vivo-msg ' + x.tipo + (x.status === "destaque" ? " em-destaque" : "") + '"><b>' + rot + " · " + esc(x.nome) + "</b>" + esc(x.texto) + "</div>";
+      }).join("") + "</div>";
+    }
+    function desenha(d) {
+      secao.hidden = false;
+      document.getElementById("vivo-pessoas").textContent = d.participantes;
+      document.getElementById("vivo-reacoes").textContent = d.reacoes || 0;
+      document.getElementById("vivo-aguardando").textContent = d.aguardando || 0;
+      document.getElementById("vivo-etapa").textContent = ETAPAS[d.etapa] || "";
+      var html;
+      if (d.etapa === "quiz" && d.quiz && d.quiz.pergunta) {
+        html = '<p class="vivo-sub">Pergunta ' + (d.quiz.indice + 1) + " de " + d.quiz.total + " · " + d.quiz.respondidos + " resposta(s)</p>" +
+          '<p class="vivo-perg">' + esc(d.quiz.pergunta.texto) + "</p>" +
+          (d.quiz.revelado ? '<p class="vivo-sub" style="margin-top:12px">Resposta certa: ' + d.quiz.pergunta.correta + "</p>" + lista(d.ranking || []) : "");
+      } else if (d.etapa === "desafio" && d.desafio) {
+        html = '<p class="vivo-perg">' + esc(d.desafio.titulo) + "</p><p class=\"vivo-sub\" style=\"margin-top:12px\">" + d.desafio.enviados + " resposta(s) enviada(s)</p>";
+      } else if (d.etapa === "encerrado") {
+        html = lista(d.ranking || []);
+      } else {
+        html = mural(d);
+      }
+      document.getElementById("vivo-conteudo").innerHTML = html;
+      // reações chegando
+      var box = document.getElementById("vivo-emojis");
+      (d.emojis || []).slice().reverse().forEach(function (e) {
+        if (vistos[e.id]) return;
+        vistos[e.id] = 1;
+        var i = document.createElement("i");
+        i.textContent = e.texto;
+        box.appendChild(i);
+        while (box.children.length > 24) box.removeChild(box.firstChild);
+      });
+    }
+    function consulta() {
+      fetch("/api/jogo?acao=estado", { cache: "no-store" })
+        .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+        .then(function (d) { if (d && d.ok) desenha(d); })
+        .catch(function () {})
+        .then(function () { setTimeout(consulta, document.hidden ? 12000 : 4000); });
+    }
+    consulta();
+  })();
+
+  /* =========================================================
      CÉU ESTRELADO (camada de cintilação)
      A foto assets/estrelas.jpg dá o fundo; aqui só desenhamos
      algumas estrelas que piscam por cima para dar vida.

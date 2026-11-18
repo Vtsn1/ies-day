@@ -1098,3 +1098,30 @@ body::before {
   vertical-align: middle;
 }
 @keyframes pulso-jogo { to { box-shadow: 0 0 0 9px rgba(255, 106, 31, 0); } }
+
+/* ---------- painel ao vivo ---------- */
+.vivo-topo { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.vivo-topo .secao-titulo { margin-bottom: 0; }
+.vivo-acoes { display: flex; flex-wrap: wrap; gap: 10px; }
+.vivo-ponto { width: 10px; height: 10px; border-radius: 50%; background: #ff6a1f; animation: pulso-jogo 1.6s ease-out infinite; }
+#ao-vivo .secao-rotulo::before { display: none; }
+.vivo-grade { display: grid; grid-template-columns: 1fr 2fr; gap: 16px; align-items: stretch; }
+.vivo-numeros { padding: 22px; display: grid; gap: 18px; align-content: start; }
+.vivo-numeros strong { display: block; font-family: var(--fonte-titulo); font-weight: 900; font-size: 40px; line-height: 1; }
+.vivo-numeros span { color: var(--texto-2); font-size: 14px; }
+.vivo-emojis { min-height: 44px; font-size: 26px; display: flex; flex-wrap: wrap; gap: 6px; }
+.vivo-emojis i { font-style: normal; animation: vivo-pula 0.7s var(--ease-mola) both; }
+.vivo-mural { padding: 22px; min-height: 260px; }
+.vivo-sub { color: var(--ciano); font-weight: 600; font-size: 14px; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 14px; }
+.vivo-lista { display: grid; gap: 10px; }
+.vivo-msg { padding: 12px 14px; border-radius: var(--raio-pequeno); background: rgba(2, 6, 30, 0.45); border: 1px solid var(--borda); animation: entrar-baixo var(--dur-media) var(--ease-saida) both; }
+.vivo-msg b { display: block; font-size: 12.5px; color: var(--ciano); margin-bottom: 2px; }
+.vivo-msg.pergunta b { color: #ffb547; }
+.vivo-msg.em-destaque { border-color: rgba(255, 181, 71, 0.6); background: linear-gradient(135deg, rgba(58, 70, 255, 0.3), rgba(255, 106, 31, 0.14)); font-size: 18px; font-weight: 600; }
+.vivo-vazio { color: var(--texto-3); }
+.vivo-perg { font-size: 18px; font-weight: 600; line-height: 1.45; }
+.vivo-rank { display: grid; gap: 8px; margin-top: 14px; }
+.vivo-rank li { display: flex; justify-content: space-between; padding: 10px 14px; border-radius: 10px; background: rgba(2, 6, 30, 0.45); border: 1px solid var(--borda); }
+.vivo-rank li:first-child { border-color: #ffb547; }
+@keyframes vivo-pula { from { transform: translateY(14px) scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 860px) { .vivo-grade { grid-template-columns: 1fr; } .vivo-numeros { grid-template-columns: repeat(3, 1fr); } .vivo-emojis { grid-column: 1 / -1; } .vivo-numeros strong { font-size: 30px; } }

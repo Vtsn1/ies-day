@@ -88,6 +88,7 @@
     $("#iniciar-desafio").textContent = e.desafio_inicio ? "Reiniciar desafio (30 min)" : "Iniciar desafio (30 min)";
 
     // moderação
+    $("#auto-comentarios").checked = e.auto_comentarios !== false;
     $("#n-pendentes").textContent = dados.pendentes.length;
     $("#pendentes").innerHTML = dados.pendentes.length ? dados.pendentes.map(cartaoMsg).join("") : '<p class="j-nota">Nada esperando moderação.</p>';
     $("#recentes").innerHTML = dados.recentes.map(cartaoMsg).join("");
@@ -155,6 +156,10 @@
           a.remove();
         }, function (e) { aviso(e.message, "erro"); });
     }
+  });
+
+  $("#auto-comentarios").addEventListener("change", function () {
+    op({ op: "auto_comentarios", valor: this.checked }, this.checked ? "Comentários vão direto para o telão" : "Comentários passam pela moderação");
   });
 
   if (chave) carrega(); else $("#login").hidden = false;

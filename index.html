@@ -34,7 +34,7 @@
         <a href="#palestrantes" data-secao="palestrantes">Palestrantes</a>
         <a href="#local" data-secao="local">Local</a>
         <a href="#faq" data-secao="faq">Dúvidas</a>
-        <a href="/jogo" class="menu-jogo">Jogo ao vivo</a>
+        <a href="#ao-vivo" class="menu-jogo" data-secao="ao-vivo" id="menu-vivo">Ao vivo</a>
         <span id="menu-inscricao"></span>
       </nav>
     </div>
@@ -44,6 +44,33 @@
     <section class="hero" id="inicio">
       <canvas id="globo" aria-hidden="true"></canvas>
       <div class="container hero-conteudo" id="hero"></div>
+    </section>
+
+    <section class="secao" id="ao-vivo" hidden>
+      <div class="container">
+        <div class="vivo-topo">
+          <div>
+            <p class="secao-rotulo"><span class="vivo-ponto" aria-hidden="true"></span>Ao vivo agora</p>
+            <h2 class="secao-titulo" id="vivo-titulo">Interações do público</h2>
+          </div>
+          <div class="vivo-acoes">
+            <a class="botao primario" href="/jogo">Entrar no jogo</a>
+            <a class="botao secundario" href="/telao" target="_blank" rel="noopener">Abrir telão</a>
+          </div>
+        </div>
+        <div class="vivo-grade">
+          <div class="cartao vivo-numeros">
+            <div><strong id="vivo-pessoas">0</strong><span>pessoas no jogo</span></div>
+            <div><strong id="vivo-reacoes">0</strong><span>reações enviadas</span></div>
+            <div><strong id="vivo-aguardando">0</strong><span>perguntas aguardando seleção</span></div>
+            <div class="vivo-emojis" id="vivo-emojis" aria-live="polite"></div>
+          </div>
+          <div class="cartao vivo-mural">
+            <p class="vivo-sub" id="vivo-etapa"></p>
+            <div id="vivo-conteudo"></div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="secao" id="sobre">
