@@ -238,72 +238,92 @@ function conexao() {
   return sql;
 }
 
+// Toda chamada passa por aqui: se o banco não responder, devolve erro com a causa em vez de pendurar a função
+const PRAZO_BANCO_MS = 8000;
+function comPrazo(promessa) {
+  let relogio;
+  const estouro = new Promise((_, rejeita) => {
+    relogio = setTimeout(() => rejeita(new Error("O banco de dados não respondeu em " + PRAZO_BANCO_MS / 1000 + " s. Tente de novo em instantes; se continuar, confira se o projeto no Supabase está ativo.")), PRAZO_BANCO_MS);
+  });
+  return Promise.race([promessa, estouro]).finally(() => clearTimeout(relogio));
+}
+
 async function prepara() {
   const s = conexao();
   if (!pronto) {
     pronto = (async () => {
-      await s`CREATE TABLE IF NOT EXISTS jogo_participantes (
-        id TEXT PRIMARY KEY,
-        codigo TEXT NOT NULL,
-        nome TEXT NOT NULL,
-        matricula TEXT,
-        visitante BOOLEAN NOT NULL DEFAULT FALSE,
-        criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
-      )`;
-      await s`CREATE TABLE IF NOT EXISTS jogo_estado (
-        id INT PRIMARY KEY,
-        etapa TEXT NOT NULL DEFAULT 'interacao',
-        pergunta INT NOT NULL DEFAULT -1,
-        pergunta_inicio TIMESTAMPTZ,
-        revelado BOOLEAN NOT NULL DEFAULT FALSE,
-        desafio_inicio TIMESTAMPTZ,
-        desafio_fim TIMESTAMPTZ,
-        atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
-      )`;
-      await s`INSERT INTO jogo_estado (id) VALUES (1) ON CONFLICT (id) DO NOTHING`;
-      await s`CREATE TABLE IF NOT EXISTS jogo_mensagens (
-        id SERIAL PRIMARY KEY,
-        participante_id TEXT NOT NULL REFERENCES jogo_participantes(id) ON DELETE CASCADE,
-        tipo TEXT NOT NULL,
-        texto TEXT NOT NULL,
-        status TEXT NOT NULL DEFAULT 'pendente',
-        criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
-      )`;
-      await s`CREATE INDEX IF NOT EXISTS jogo_mensagens_tipo_criado ON jogo_mensagens (tipo, criado_em DESC)`;
-      await s`CREATE TABLE IF NOT EXISTS jogo_respostas_quiz (
-        participante_id TEXT NOT NULL REFERENCES jogo_participantes(id) ON DELETE CASCADE,
-        pergunta INT NOT NULL,
-        opcao TEXT NOT NULL,
-        correta BOOLEAN NOT NULL,
-        tempo_ms INT NOT NULL,
-        pontos INT NOT NULL,
-        criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
-        PRIMARY KEY (participante_id, pergunta)
-      )`;
-      await s`CREATE TABLE IF NOT EXISTS jogo_respostas_desafio (
-        participante_id TEXT PRIMARY KEY REFERENCES jogo_participantes(id) ON DELETE CASCADE,
-        valor DOUBLE PRECISION NOT NULL,
-        justificativa TEXT,
-        erro DOUBLE PRECISION NOT NULL,
-        pontos INT NOT NULL,
-        envios INT NOT NULL DEFAULT 1,
-        atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
-      )`;
-      await s`ALTER TABLE jogo_estado ADD COLUMN IF NOT EXISTS auto_comentarios BOOLEAN NOT NULL DEFAULT TRUE`;
-      await s`ALTER TABLE jogo_estado ADD COLUMN IF NOT EXISTS pausado_em TIMESTAMPTZ`;
-      // Supabase expõe o schema public pela API com a chave publishable.
-      // Com RLS ligado e nenhuma política, essa porta fica fechada; a função (dona das tabelas) continua acessando.
-      await s`ALTER TABLE jogo_participantes ENABLE ROW LEVEL SECURITY`;
-      await s`ALTER TABLE jogo_estado ENABLE ROW LEVEL SECURITY`;
-      await s`ALTER TABLE jogo_mensagens ENABLE ROW LEVEL SECURITY`;
-      await s`ALTER TABLE jogo_respostas_quiz ENABLE ROW LEVEL SECURITY`;
-      await s`ALTER TABLE jogo_respostas_desafio ENABLE ROW LEVEL SECURITY`;
+      // Schema já pronto? A consulta ao catálogo não pega lock nas tabelas do jogo.
+      const r = await s`SELECT to_regclass('jogo_respostas_desafio') IS NOT NULL AND EXISTS (
+          SELECT 1 FROM information_schema.columns
+          WHERE table_schema = current_schema() AND table_name = 'jogo_estado' AND column_name = 'pausado_em') AS ok`;
+      if (r[0].ok) return;
+      // CREATE/ALTER pedem lock exclusivo: se outra sessão estiver com a tabela aberta, esperariam para sempre
+      // e todas as consultas do jogo ficariam na fila atrás deles. Com lock_timeout, falham rápido e tentam de novo.
+      await s.begin(async (t) => {
+        await t`SET LOCAL lock_timeout = '4s'`;
+        await t`CREATE TABLE IF NOT EXISTS jogo_participantes (
+          id TEXT PRIMARY KEY,
+          codigo TEXT NOT NULL,
+          nome TEXT NOT NULL,
+          matricula TEXT,
+          visitante BOOLEAN NOT NULL DEFAULT FALSE,
+          criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
+        await t`CREATE TABLE IF NOT EXISTS jogo_estado (
+          id INT PRIMARY KEY,
+          etapa TEXT NOT NULL DEFAULT 'interacao',
+          pergunta INT NOT NULL DEFAULT -1,
+          pergunta_inicio TIMESTAMPTZ,
+          revelado BOOLEAN NOT NULL DEFAULT FALSE,
+          desafio_inicio TIMESTAMPTZ,
+          desafio_fim TIMESTAMPTZ,
+          atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
+        await t`INSERT INTO jogo_estado (id) VALUES (1) ON CONFLICT (id) DO NOTHING`;
+        await t`CREATE TABLE IF NOT EXISTS jogo_mensagens (
+          id SERIAL PRIMARY KEY,
+          participante_id TEXT NOT NULL REFERENCES jogo_participantes(id) ON DELETE CASCADE,
+          tipo TEXT NOT NULL,
+          texto TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pendente',
+          criado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
+        await t`CREATE INDEX IF NOT EXISTS jogo_mensagens_tipo_criado ON jogo_mensagens (tipo, criado_em DESC)`;
+        await t`CREATE TABLE IF NOT EXISTS jogo_respostas_quiz (
+          participante_id TEXT NOT NULL REFERENCES jogo_participantes(id) ON DELETE CASCADE,
+          pergunta INT NOT NULL,
+          opcao TEXT NOT NULL,
+          correta BOOLEAN NOT NULL,
+          tempo_ms INT NOT NULL,
+          pontos INT NOT NULL,
+          criado_em TIMESTAMPTZ NOT NULL DEFAULT now(),
+          PRIMARY KEY (participante_id, pergunta)
+        )`;
+        await t`CREATE TABLE IF NOT EXISTS jogo_respostas_desafio (
+          participante_id TEXT PRIMARY KEY REFERENCES jogo_participantes(id) ON DELETE CASCADE,
+          valor DOUBLE PRECISION NOT NULL,
+          justificativa TEXT,
+          erro DOUBLE PRECISION NOT NULL,
+          pontos INT NOT NULL,
+          envios INT NOT NULL DEFAULT 1,
+          atualizado_em TIMESTAMPTZ NOT NULL DEFAULT now()
+        )`;
+        await t`ALTER TABLE jogo_estado ADD COLUMN IF NOT EXISTS auto_comentarios BOOLEAN NOT NULL DEFAULT TRUE`;
+        await t`ALTER TABLE jogo_estado ADD COLUMN IF NOT EXISTS pausado_em TIMESTAMPTZ`;
+        // Supabase expõe o schema public pela API com a chave publishable.
+        // Com RLS ligado e nenhuma política, essa porta fica fechada; a função (dona das tabelas) continua acessando.
+        await t`ALTER TABLE jogo_participantes ENABLE ROW LEVEL SECURITY`;
+        await t`ALTER TABLE jogo_estado ENABLE ROW LEVEL SECURITY`;
+        await t`ALTER TABLE jogo_mensagens ENABLE ROW LEVEL SECURITY`;
+        await t`ALTER TABLE jogo_respostas_quiz ENABLE ROW LEVEL SECURITY`;
+        await t`ALTER TABLE jogo_respostas_desafio ENABLE ROW LEVEL SECURITY`;
+      });
     })().catch((e) => {
       pronto = null;
       throw e;
     });
   }
-  await pronto;
+  await comPrazo(pronto);
   return s;
 }
 
