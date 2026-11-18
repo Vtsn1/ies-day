@@ -131,12 +131,12 @@
       '<h1 class="t-titulo t-desafio-titulo">' + J.esc(d.titulo) + "</h1>" +
       '<div class="t-duas"><div class="t-desafio">' +
       d.enunciado.map(function (p) { return "<p>" + J.esc(p) + "</p>"; }).join("") +
-      (d.resolucao.length ? "<p><b>Resolução</b></p><ul>" + d.resolucao.map(function (i) { return "<li>" + J.esc(i) + "</li>"; }).join("") + "</ul>" : "") + "</div>" +
+      "<p><b>" + J.esc(d.pergunta) + "</b></p></div>" +
       '<div class="t-desafio-lado">' +
       (d.terminou
-        ? '<p class="t-rotulo">Tempo esgotado</p><p class="t-info">Valor de referência</p><p class="t-grande t-referencia">' + J.reais(d.referencia) + "</p>"
+        ? '<p class="t-rotulo">Tempo esgotado</p><p class="t-info">As propostas estão sendo avaliadas pela organização</p>'
         : '<p class="t-rotulo">Tempo restante</p><p class="t-grande" id="tempo"></p><div class="t-barra"><i id="barra"></i></div>') +
-      '<p class="t-info"><b id="enviados">' + d.enviados + "</b> resposta(s) enviada(s)</p>" +
+      '<p class="t-info"><b id="enviados">' + d.enviados + "</b> proposta(s) enviada(s)</p>" +
       "</div></div>"
     );
   }

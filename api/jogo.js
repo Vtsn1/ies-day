@@ -7,12 +7,12 @@
    POST /api/jogo?acao=entrar            { id, nome, matricula, visitante }
    POST /api/jogo?acao=mensagem          { id, tipo: emoji|comentario|pergunta, texto }
    POST /api/jogo?acao=responder         { id, pergunta, opcao }
-   POST /api/jogo?acao=desafio           { id, valor, justificativa }
+   POST /api/jogo?acao=desafio           { id, proposta }
    GET  /api/jogo?acao=admin             (cabeçalhos x-usuario e x-chave) painel
    GET  /api/jogo?acao=exportar          (cabeçalhos x-usuario e x-chave) CSV
    POST /api/jogo?acao=admin             (cabeçalhos x-usuario e x-chave) { op, ... }
    ops: etapa, abrir_pergunta, revelar, pausar, retomar, iniciar_desafio, mais_tempo,
-        encerrar_desafio, auto_comentarios, moderar, zerar
+        encerrar_desafio, pontuar_desafio, auto_comentarios, moderar, zerar
    ========================================================= */
 
 /* ======================= CONTEÚDO ======================= */
@@ -171,32 +171,14 @@ const PERGUNTAS = [
 // ETAPA 2 · Desafio Sem Fronteiras (30 minutos, aceita respostas até o fim)
 const DESAFIO = {
   duracaoMin: 30,
-  titulo: "Desafio Sem Fronteiras: quanto custa um ataque hacker a uma bateria?",
+  titulo: "Desafio Sem Fronteiras: proteja a bateria do Seridó",
   enunciado: [
-    "Transição energética: uma usina solar de 60 MWp no Seridó potiguar sofre cortes de geração (curtailment) determinados pelo ONS perto do meio-dia, quando a rede local não comporta toda a energia renovável. Para aproveitar essa energia, a empresa instalou um BESS (sistema de armazenamento em baterias) de 20 MW / 80 MWh, com células de lítio-ferro-fosfato (LFP).",
-    "BESS: todo dia o sistema faz 1 ciclo. Carrega só com energia que seria cortada (custo zero) e descarrega no pico da noite, vendendo a R$ 600,00/MWh. Para preservar a vida útil, opera com profundidade de descarga de 90% da capacidade nominal. Admita que essa profundidade limita a energia absorvida da usina em cada carga e que a eficiência de ida e volta (carga + descarga) é de 85% sobre essa energia.",
-    "Cibersegurança: um invasor entrou pela VPN do fornecedor de manutenção, que não exigia autenticação multifator (MFA), e criptografou o servidor do EMS/SCADA com ransomware. Por segurança, o BESS ficou parado 12 dias até a restauração. A resposta ao incidente (perícia, reinstalação e auditoria) custou R$ 350.000,00. Um projeto de segmentação de rede no padrão IEC 62443, com MFA, teria evitado o ataque e custava R$ 180.000,00.",
+    "Uma usina solar de 60 MWp no Seridó potiguar perde energia todo dia: perto do meio-dia, o ONS corta parte da geração porque a rede local não comporta tanta energia renovável. Para aproveitar essa sobra, a empresa instalou um BESS (sistema de armazenamento em baterias) de 20 MW / 80 MWh, que carrega com a energia que seria cortada e vende no pico da noite.",
+    "Seis meses depois, um invasor entrou pela VPN do fornecedor de manutenção, que não exigia autenticação multifator, e criptografou o servidor que controla a bateria (EMS/SCADA) com ransomware. O BESS ficou 12 dias parado, a usina voltou a perder energia e a empresa gastou caro para se recuperar.",
+    "A diretoria tem R$ 500 mil e pediu propostas à sua equipe. Não existe resposta única: vence a solução mais completa, viável e criativa.",
   ],
-  // resolução: só aparece no celular e no telão depois que o desafio termina
-  resolucao: [
-    "Energia absorvida por ciclo: 80 MWh × 90% = 72 MWh.",
-    "Energia entregue à rede: 72 MWh × 85% = 61,2 MWh por dia.",
-    "Receita diária: 61,2 MWh × R$ 600/MWh = R$ 36.720. Em 12 dias parado: R$ 440.640 perdidos.",
-    "Prejuízo do ataque: R$ 440.640 + R$ 350.000 de resposta ao incidente = R$ 790.640.",
-    "Economia com a segmentação e MFA: R$ 790.640 − R$ 180.000 = R$ 610.640.",
-  ],
-  pergunta: "Quanto a empresa teria economizado se tivesse investido na segmentação com MFA antes do ataque? (R$)",
-  unidade: "R$",
-  // Gabarito: energia absorvida = 80 MWh · 0,90 = 72 MWh; entregue = 72 · 0,85 = 61,2 MWh
-  // Receita diária = 61,2 MWh · R$ 600 = R$ 36.720; perdida em 12 dias = R$ 440.640
-  // Prejuízo = 440.640 + 350.000 = R$ 790.640 → economia = 790.640 − 180.000 = R$ 610.640
-  referencia: 610640,
-  // tolerâncias para pontuar
-  faixas: [
-    { erroMax: 0.02, pontos: 2000 },
-    { erroMax: 0.1, pontos: 1000 },
-  ],
-  bonusMax: 500, // bônus por enviar cedo (proporcional ao tempo restante)
+  pergunta: "Qual é a sua proposta? Diga o que faria para o ataque não se repetir e para a usina e a bateria aproveitarem melhor a energia, como gastaria o orçamento e por que sua solução é a melhor.",
+  pontosMax: 2000, // a organização avalia cada proposta e dá de 0 a pontosMax
 };
 
 /* ======================= ARMAZENAMENTO ======================= */
@@ -584,10 +566,7 @@ async function estado(res) {
       enviados: Object.keys(t.des).length,
       titulo: DESAFIO.titulo,
       enunciado: DESAFIO.enunciado,
-      resolucao: terminou ? DESAFIO.resolucao : [],
       pergunta: DESAFIO.pergunta,
-      unidade: DESAFIO.unidade,
-      referencia: terminou ? DESAFIO.referencia : null,
     };
   }
   // cache curto na CDN da Vercel: centenas de celulares consultando viram poucas chamadas ao banco
@@ -620,8 +599,8 @@ async function meu(req, res) {
     if (conhecida) pontosQuiz += q.pontos || 0;
   });
   const d0 = json(r[2], null);
-  const desafio = d0 ? { valor: d0.valor, justificativa: d0.justificativa, envios: d0.envios, em: d0.em, pontos: terminou ? d0.pontos : null } : null;
-  const total = pontosQuiz + (terminou && desafio ? desafio.pontos : 0);
+  const desafio = d0 ? { proposta: d0.proposta, envios: d0.envios, em: d0.em, pontos: terminou && d0.pontos != null ? d0.pontos : null } : null;
+  const total = pontosQuiz + (desafio && desafio.pontos ? desafio.pontos : 0);
   res.setHeader("Cache-Control", "no-store");
   res.status(200).json({ ok: true, participante: { nome: p.nome, codigo: p.codigo }, respostas, pontosQuiz, desafio, total });
 }
@@ -710,24 +689,15 @@ async function desafio(req, res) {
   const b = corpo(req);
   const id = texto(b.id, 64);
   if (!(await participante(id))) return erro(res, 404, "Entre no jogo antes de responder.");
-  const valor = Number(b.valor);
-  if (!isFinite(valor)) return erro(res, 400, "Digite um número na resposta final.");
-  const justificativa = String(b.justificativa == null ? "" : b.justificativa).trim().slice(0, 3000);
+  const proposta = String(b.proposta == null ? "" : b.proposta).trim().slice(0, 3000);
+  if (proposta.length < 20) return erro(res, 400, "Escreva sua proposta (pelo menos uma frase completa).");
   const e = await lerEstado();
   if (e.etapa !== "desafio" || e.desafio_inicio == null) return erro(res, 409, "O desafio não está aberto.");
   if (e.agora > e.desafio_fim + 10000) return erro(res, 409, "O tempo do desafio acabou.");
   if (e.pausado_em != null) return erro(res, 409, "O desafio está pausado. Envie quando voltar.");
-  const erroRel = Math.abs(valor - DESAFIO.referencia) / DESAFIO.referencia;
-  let pontos = 0;
-  for (const f of DESAFIO.faixas) {
-    if (erroRel <= f.erroMax) { pontos = f.pontos; break; }
-  }
-  if (pontos > 0) {
-    const restante = Math.max(0, e.desafio_fim - e.agora) / (e.desafio_fim - e.desafio_inicio);
-    pontos += Math.round(DESAFIO.bonusMax * restante);
-  }
   const antes = json(await cmd(["HGET", K.des, id]), null);
-  const reg = { valor, justificativa, erro: erroRel, pontos, envios: antes ? (antes.envios || 1) + 1 : 1, em: e.agora };
+  // pontos ficam com a organização (op pontuar_desafio); reenviar mantém a nota já dada
+  const reg = { proposta, pontos: antes ? antes.pontos : null, envios: antes ? (antes.envios || 1) + 1 : 1, em: e.agora };
   await cmd(["HSET", K.des, id, JSON.stringify(reg)]);
   res.status(200).json({ ok: true });
 }
@@ -752,9 +722,9 @@ async function adminDados(res) {
   const desafioRespostas = Object.keys(t.des).map((id) => {
     const d = t.des[id] || {};
     const p = t.part[id] || {};
-    return { nome: p.nome, codigo: p.codigo, matricula: p.matricula, visitante: !!p.visitante, valor: d.valor, justificativa: d.justificativa,
-      erro: d.erro, pontos: d.pontos, envios: d.envios, em: d.em };
-  }).sort((a, b) => a.erro - b.erro || a.em - b.em);
+    return { id, nome: p.nome, codigo: p.codigo, matricula: p.matricula, visitante: !!p.visitante, proposta: d.proposta,
+      pontos: d.pontos, envios: d.envios, em: d.em };
+  }).sort((a, b) => a.em - b.em);
   const dist = e.pergunta >= 0 ? distribuicaoDe(t.quiz[e.pergunta]).dist : { A: 0, B: 0, C: 0, D: 0 };
   res.setHeader("Cache-Control", "no-store");
   res.status(200).json({
@@ -764,7 +734,7 @@ async function adminDados(res) {
     perguntas: PERGUNTAS.map((p, i) => Object.assign({ indice: i }, p)),
     distribuicao: dist,
     tempo: TEMPO_PERGUNTA,
-    desafio: { duracaoMin: DESAFIO.duracaoMin, referencia: DESAFIO.referencia },
+    desafio: { duracaoMin: DESAFIO.duracaoMin, pontosMax: DESAFIO.pontosMax },
     pendentes,
     recentes,
     desafioRespostas,
@@ -781,10 +751,10 @@ function csv(linhas) {
 
 async function exportar(res) {
   const t = await carregaTudo();
-  const linhas = [["posicao", "codigo", "nome", "matricula", "visitante", "acertos_quiz", "tempo_acertos_s", "pontos_quiz", "pontos_desafio", "total", "valor_desafio", "justificativa_desafio"]];
+  const linhas = [["posicao", "codigo", "nome", "matricula", "visitante", "acertos_quiz", "tempo_acertos_s", "pontos_quiz", "pontos_desafio", "total", "proposta_desafio"]];
   ranking(t, true).forEach((r, i) => {
     const x = t.des[r.id] || {};
-    linhas.push([i + 1, r.codigo, r.nome, r.matricula, r.visitante ? "sim" : "não", r.acertos, (r.tempo_acertos / 1000).toFixed(1).replace(".", ","), r.quiz, r.desafio, r.pontos, x.valor, x.justificativa]);
+    linhas.push([i + 1, r.codigo, r.nome, r.matricula, r.visitante ? "sim" : "não", r.acertos, (r.tempo_acertos / 1000).toFixed(1).replace(".", ","), r.quiz, r.desafio, r.pontos, x.proposta]);
   });
   res.setHeader("Content-Type", "text/csv; charset=utf-8");
   res.setHeader("Cache-Control", "no-store");
@@ -828,6 +798,14 @@ async function adminAcao(req, res) {
     if (e.desafio_fim != null) await gravaEstado({ desafio_fim: agora, pausado_em: null });
   } else if (op === "auto_comentarios") {
     await gravaEstado({ auto_comentarios: !!b.valor });
+  } else if (op === "pontuar_desafio") {
+    const pid = texto(b.id, 64);
+    const pontos = Math.round(Number(b.pontos));
+    if (!(pontos >= 0 && pontos <= DESAFIO.pontosMax)) return erro(res, 400, "Pontos devem ir de 0 a " + DESAFIO.pontosMax + ".");
+    const d = json(await cmd(["HGET", K.des, pid]), null);
+    if (!d) return erro(res, 404, "Proposta não encontrada.");
+    d.pontos = pontos;
+    await cmd(["HSET", K.des, pid, JSON.stringify(d)]);
   } else if (op === "moderar") {
     const status = texto(b.status, 20);
     if (STATUS.indexOf(status) < 0) return erro(res, 400, "Status inválido.");

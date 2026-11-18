@@ -231,15 +231,19 @@
     $("#mais-tempo").disabled = !e.desafio_inicio;
     $("#encerrar-desafio").disabled = !s.desafioRolando;
 
-    var ref = dados.desafio.referencia;
+    // a organização lê cada proposta e escolhe a nota; os pontos entram no ranking quando o desafio termina
+    var max = dados.desafio.pontosMax;
+    var notas = [0, max / 4, max / 2, (3 * max) / 4, max];
     poe("#tabela-desafio",
-      "<tr><th>Nome</th><th>ID</th><th>Matrícula</th><th>Resposta</th><th>Erro</th><th>Pontos</th><th>Envios</th><th>Hora</th><th>Memorial</th></tr>" +
+      "<tr><th>Nome</th><th>ID</th><th>Matrícula</th><th>Proposta</th><th>Pontos</th><th>Envios</th><th>Hora</th></tr>" +
       (dados.desafioRespostas.length ? dados.desafioRespostas.map(function (r) {
-        var cls = r.erro <= 0.02 ? "a-ok" : r.erro <= 0.1 ? "a-quase" : "";
+        var botoes = notas.map(function (n) {
+          return '<button class="botao ' + (r.pontos === n ? "primario" : "secundario") + '" data-nota="' + n + '" data-pid="' + J.esc(r.id) + '">' + n + "</button>";
+        }).join(" ");
         return "<tr><td>" + J.esc(r.nome) + '</td><td class="n">' + J.esc(r.codigo) + '</td><td class="n">' + (r.visitante ? "visitante" : J.esc(r.matricula)) +
-          '</td><td class="n">' + J.reais(r.valor) + '</td><td class="n ' + cls + '">' + (r.erro * 100).toFixed(1).replace(".", ",") + '%</td><td class="n">' + r.pontos +
-          '</td><td class="n">' + r.envios + '</td><td class="n">' + hora(r.em) + '</td><td class="memorial">' + J.esc(r.justificativa || "") + "</td></tr>";
-      }).join("") : '<tr><td colspan="9">Nenhuma resposta ainda. Referência: ' + J.reais(ref) + "</td></tr>"));
+          '</td><td class="memorial">' + J.esc(r.proposta || "") + '</td><td class="n">' + botoes +
+          '</td><td class="n">' + r.envios + '</td><td class="n">' + hora(r.em) + "</td></tr>";
+      }).join("") : '<tr><td colspan="7">Nenhuma proposta ainda.</td></tr>'));
 
     poe("#tabela-ranking",
       "<tr><th>#</th><th>Nome</th><th>ID</th><th>Matrícula</th><th>Acertos</th><th>Tempo nos acertos</th><th>Quiz</th><th>Desafio</th><th>Total</th></tr>" +
@@ -272,6 +276,7 @@
       if (i <= e.pergunta && !window.confirm("Abrir de novo a pergunta " + (i + 1) + "? O tempo recomeça; quem já respondeu mantém a resposta e pode trocar.")) return;
       return abrirPergunta(i);
     }
+    if (b.dataset.nota) return op({ op: "pontuar_desafio", id: b.dataset.pid, pontos: Number(b.dataset.nota) }, b.dataset.nota + " pontos para a proposta");
     if (b.dataset.msg) {
       var nomes = { aprovada: "Aprovada", destaque: "Em destaque no telão", rejeitada: "Fora do telão" };
       return op({ op: "moderar", id: Number(b.dataset.msg), status: b.dataset.status }, nomes[b.dataset.status]);

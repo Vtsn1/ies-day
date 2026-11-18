@@ -235,31 +235,27 @@
   function telaDesafio() {
     var d = estado.desafio;
     if (!d) return '<h2 class="j-titulo">O desafio já vai começar</h2>';
-    var r = J.le(CHAVE_RASCUNHO, { valor: "", justificativa: "" });
+    var r = J.le(CHAVE_RASCUNHO, { proposta: "" });
     var enviado = meusDados && meusDados.desafio;
     var cab =
       '<div class="j-quiz-cab"><span>Etapa 2 · Desafio</span><span class="j-timer" id="timer"></span></div>' +
       '<div class="j-barra"><i id="barra"></i></div>' +
       '<h2 class="j-titulo">' + J.esc(d.titulo) + "</h2>" +
-      d.enunciado.map(function (p) { return '<p class="j-enunciado">' + J.esc(p) + "</p>"; }).join("") +
-      (d.resolucao.length ? '<p class="j-enunciado"><b>Resolução</b></p><ul class="j-itens">' + d.resolucao.map(function (i) { return "<li>" + J.esc(i) + "</li>"; }).join("") + "</ul>" : "");
+      d.enunciado.map(function (p) { return '<p class="j-enunciado">' + J.esc(p) + "</p>"; }).join("");
     if (d.terminou) {
-      var txt = enviado
-        ? "Sua resposta: <b>" + J.reais(enviado.valor) + "</b>" + (enviado.pontos != null ? " · <b>" + enviado.pontos + " pontos</b>" : "")
-        : "Você não enviou resposta.";
-      return cab + '<div class="j-resultado ' + (enviado && enviado.pontos > 0 ? "ok" : "nao") + '"><strong>Desafio encerrado</strong><p>' + txt +
-        ". Valor de referência: <b>" + J.reais(d.referencia) + "</b>.</p></div>";
+      var txt = !enviado ? "Você não enviou proposta."
+        : enviado.pontos != null ? "Sua proposta foi avaliada: <b>" + enviado.pontos + " pontos</b>."
+        : "Sua proposta foi recebida e está sendo avaliada pela organização.";
+      return cab + '<div class="j-resultado ' + (enviado ? "ok" : "nao") + '"><strong>Desafio encerrado</strong><p>' + txt + "</p></div>";
     }
     return (
       cab +
       '<form id="form-desafio" novalidate>' +
       '<label class="j-campo"><span>' + J.esc(d.pergunta) + "</span>" +
-      '<input id="d-valor" inputmode="decimal" placeholder="Ex.: 123.456,78" value="' + J.esc(r.valor) + '"></label>' +
-      '<label class="j-campo"><span>Memorial de cálculo (como chegou no resultado)</span>' +
-      '<textarea id="d-just" rows="5" maxlength="3000" placeholder="Mostre as contas e o raciocínio que levaram ao resultado">' + J.esc(r.justificativa) + "</textarea></label>" +
+      '<textarea id="d-proposta" rows="8" maxlength="3000" placeholder="Descreva sua solução">' + J.esc(r.proposta) + "</textarea></label>" +
       '<p class="j-nota">O rascunho fica salvo neste aparelho. Você pode reenviar até o tempo acabar; vale o último envio.</p>' +
-      (enviado ? '<p class="j-dica">Enviado: <b>' + J.reais(enviado.valor) + "</b> (" + enviado.envios + " envio(s))</p>" : "") +
-      '<button class="botao primario j-largo" type="submit">' + (enviado ? "Reenviar resposta" : "Enviar resposta") + "</button>" +
+      (enviado ? '<p class="j-dica">Proposta enviada (' + enviado.envios + " envio(s)).</p>" : "") +
+      '<button class="botao primario j-largo" type="submit">' + (enviado ? "Reenviar proposta" : "Enviar proposta") + "</button>" +
       "</form>"
     );
   }
@@ -293,16 +289,15 @@
     });
     var f = $("#form-desafio");
     if (f) {
-      var salva = function () { J.guarda(CHAVE_RASCUNHO, { valor: $("#d-valor").value, justificativa: $("#d-just").value }); };
-      $("#d-valor").addEventListener("input", salva);
-      $("#d-just").addEventListener("input", salva);
+      var salva = function () { J.guarda(CHAVE_RASCUNHO, { proposta: $("#d-proposta").value }); };
+      $("#d-proposta").addEventListener("input", salva);
       f.addEventListener("submit", function (ev) {
         ev.preventDefault();
-        var v = J.numero($("#d-valor").value);
-        if (!isFinite(v)) { aviso("Digite um número na resposta final.", "erro"); return; }
+        var t = $("#d-proposta").value.trim();
+        if (t.length < 20) { aviso("Escreva sua proposta (pelo menos uma frase completa).", "erro"); return; }
         salva();
-        J.enfileira("desafio", { id: eu.id, valor: v, justificativa: $("#d-just").value });
-        aviso("Enviando resposta…");
+        J.enfileira("desafio", { id: eu.id, proposta: t });
+        aviso("Enviando proposta…");
       });
     }
   }
