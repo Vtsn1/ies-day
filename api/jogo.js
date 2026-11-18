@@ -12,7 +12,7 @@
    GET  /api/jogo?acao=exportar          (cabeçalhos x-usuario e x-chave) CSV
    POST /api/jogo?acao=admin             (cabeçalhos x-usuario e x-chave) { op, ... }
    ops: etapa, abrir_pergunta, revelar, pausar, retomar, iniciar_desafio, mais_tempo,
-        encerrar_desafio, auto_comentarios, moderar, destravar, zerar
+        encerrar_desafio, auto_comentarios, moderar, zerar
    ========================================================= */
 
 /* ======================= CONTEÚDO ======================= */

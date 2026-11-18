@@ -37,7 +37,13 @@
     if (corpo) op.body = JSON.stringify(corpo);
     return fetch(url, op).then(
       function (r) {
-        return r.json().catch(function () { return { ok: false, erro: "Resposta inválida do servidor." }; }).then(function (d) {
+        return r.text().then(function (t) {
+          try { return JSON.parse(t); } catch (e) {
+            // não veio da nossa API (checkpoint/erro da Vercel): mostra o que chegou de fato
+            var titulo = (t.match(/<title>([^<]*)<\/title>/i) || [])[1] || t.replace(/\s+/g, " ").slice(0, 80);
+            return { ok: false, erro: "Resposta inválida do servidor (HTTP " + r.status + "): " + titulo };
+          }
+        }).then(function (d) {
           if (d && d.agora) {
             var idade = Number(r.headers.get("age") || 0) * 1000;
             offset = d.agora + idade - Date.now();
